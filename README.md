@@ -1,59 +1,49 @@
 # Węzły LagunBus
 
 Oprogramowanie urządzeń fizycznych: **klawisz** i **wyjście**, na ESP32-C3 Super Mini
-z zewnętrznym nadajnikiem CAN. Do tego biblioteka w C, wspólna dla obu i **nie wiedząca
-nic o sprzęcie**.
+z zewnętrznym nadajnikiem CAN.
+
+The protocol itself is **not here**. The node library — C for this firmware, Python for
+simulators — lives in its own repository, [`../lagunbus-node/`](../lagunbus-node/), and
+comes in as a submodule. What this repository keeps is the glue between that library and
+a board: the ESP32-C3 port, the two applications, the ESP-IDF container and the flashing
+scripts (zadania/FEAT-03.md).
 
 Protokół opisuje [`../lagunbus-spec/`](../lagunbus-spec/), drugą stroną kontraktu jest
 [`../hub/`](../hub/).
 
 **Stan: potwierdzony POC.** Klawisz przyłączył się do huba przez prawdziwą magistralę
 (2026-09-24): węzeł zgłasza się sam, przyjmuje adres, odpowiada na odczyty i zapisy,
-odsyła `Uid` segmentami i ogłasza `Booted`. Czego jeszcze nie ma — [niżej](#czego-jeszcze-nie-ma).
+odsyła `Uid` segmentami i ogłasza `Booted`. What the library still lacks is listed in
+[`../lagunbus-node/README.md`](../lagunbus-node/README.md).
 
 ---
 
-## Jedna biblioteka, trzy sposoby uruchomienia
-
-To jest sedno układu i warto je przeczytać, zanim cokolwiek się buduje.
-
-```
-                    components/lagunbus/         ← te same pliki .c
-                       protokół, zero sprzętu
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-   host/                 host/                ports/esp32c3
-   TESTY                 WĘZEŁ na SocketCAN    WĘZEŁ na TWAI
-   cmake + ctest         lagun-node, Linux     obraz na płytce
-   macOS albo Linux      gada z hubem          ESP-IDF, kontener
-```
+## The library, as a submodule
 
 ```sh
-python3 tools/generate_registry.py      # rejestr z lagunbus-spec/
-cd host && cmake -S . -B build -G Ninja && cmake --build build
-ctest --test-dir build --output-on-failure
+git submodule update --init          # once after cloning: fills lib/lagunbus-node
 ```
 
-Testy sprawdzają kodek **tymi samymi wektorami, co hub**
-([`PRZYKLADY.md`](../lagunbus-spec/PRZYKLADY.md)). Jeśli obie strony przechodzą te same
-wektory, nie mogą rozjechać się ze sobą, nie rozjeżdżając się ze specyfikacją. Każda
-linia sprawdzona tutaj jest linią, której nie trzeba będzie szukać analizatorem
-magistrali — na płytce zostaje do rozstrzygnięcia TWAI, nadajnik, zasilanie i GPIO,
-a nie to, czy adres siedzi na właściwych bitach.
-
-Na Linuksie powstaje przy okazji `lagun-node` — **węzeł**, nie symulator: ten sam kod,
-który jedzie na ESP32, wpięty w gniazdo SocketCAN zamiast w kontroler TWAI.
-
-```sh
-./build/lagun-node --bus can0            # zgłasza się i czeka na adres
-./build/lagun-node --bus can0 --sniff    # tylko podgląd ruchu
+```
+  lib/lagunbus-node/c/lagunbus/     ← the library, an ESP-IDF component
+            │
+            ▼
+  ports/esp32c3/                    TWAI + NVS + esp_timer + Uid from eFuse
+  apps/key, apps/output             read a pin, drive a relay
 ```
 
-Hub musi mieć wtedy **otwarte przyjmowanie** — inaczej odłoży zgłoszenie i nic się nie
-wydarzy. Podgląd jest osobnym trybem, bo `candump` pokazuje bajty, a to pokazuje
-znaczenie — przez tę samą bibliotekę, która jedzie na płytkę. Jeśli tu coś wygląda
-inaczej niż w `candump`, usterka jest w bibliotece, a nie na magistrali.
+Both applications point `EXTRA_COMPONENT_DIRS` at `lib/lagunbus-node/c/lagunbus` and at
+`ports/esp32c3`. A submodule rather than a path to the sibling directory: the ESP-IDF
+container mounts only this repository, so `../lagunbus-node` does not exist where the
+image is built — and the submodule pins the exact library commit a firmware was built
+against. Updating the library is `git -C lib/lagunbus-node pull` and a commit here.
+
+The native build, the unit tests, `lagun-node` on SocketCAN and the registry generator
+all moved with the library — see its README. Everything that can be checked without a
+board is checked there, **before** anything is flashed: the key and output logic lives in
+the library for exactly that reason. What is left to settle on the board is TWAI, the
+transceiver, power and GPIO.
 
 ---
 
@@ -61,32 +51,15 @@ inaczej niż w `candump`, usterka jest w bibliotece, a nie na magistrali.
 
 ```
 devices/
-├── components/lagunbus/        BIBLIOTEKA — protokół, zero sprzętu
-│   ├── include/lagunbus/
-│   │   ├── frame.h             ramka, kodek 29-bit, bajt nagłówka
-│   │   ├── registry.h          GENEROWANY z lagunbus-spec/registry/
-│   │   ├── values.h            kodek wartości: u8…i32, map, enum, bool
-│   │   ├── endpoint.h          endpoint: atrybuty, komendy, zdarzenia
-│   │   ├── node.h              pętla węzła, przyłączanie, segmenty
-│   │   ├── key.h, output.h     logika typów KeyInput i Output
-│   │   ├── transport.h         ◄── JEDYNE miejsce, które wie o magistrali
-│   │   └── platform.h          ◄── i o czasie, pamięci trwałej, losowości
-│   └── src/
+├── lib/lagunbus-node/          SUBMODULE — the node library (C + Python)
 ├── ports/
-│   ├── esp32c3/                TWAI + NVS + esp_timer + Uid z eFuse
-│   └── posix/                  SocketCAN + plik + clock_gettime
+│   └── esp32c3/                TWAI + NVS + esp_timer + Uid z eFuse
 ├── apps/
 │   ├── key/                    klawisz
 │   └── output/                 wyjście (przekaźnik)
-├── host/                       build natywny: testy + lagun-node
-├── tools/                      generator rejestru, flash.sh, monitor.sh
+├── tools/                      flash.sh, monitor.sh
 └── .devcontainer/              ESP-IDF v5.3.1 w kontenerze
 ```
-
-Podział jest taki jak po stronie huba i z tego samego powodu: **`components/lagunbus/`
-jest odpowiednikiem `protocol/`** — specyfikacja w kodzie, nic o urządzeniu. Logika
-klawisza i wyjścia też jest w bibliotece, nie w aplikacji, więc sprawdza się ją na
-komputerze (`host/test_key.c`, `host/test_output.c`).
 
 ---
 
@@ -100,7 +73,7 @@ nie aplikacja** — ESP32 z podniesionym TWAI potwierdza ramki huba, choćby fir
 umiał nic więcej. Na linii są docelowo trzy węzły, więc problem dotyczy tylko okna, zanim
 na którejkolwiek płytce wstanie TWAI.
 
-Port SocketCAN jest potrzebny z dwóch innych powodów:
+Port SocketCAN (now in `lagunbus-node/c/ports/posix`) jest potrzebny z dwóch innych powodów:
 
 - **rozdzielenie usterek.** Gdy pierwsza ramka nie dojdzie, podejrzanych jest sześciu:
   protokół, TWAI, nadajnik, okablowanie, sterownik `mcp251xfd` i hub. Węzeł zbudowany
@@ -110,8 +83,8 @@ Port SocketCAN jest potrzebny z dwóch innych powodów:
 
 ### Dwa interfejsy i nic więcej
 
-Biblioteka rozmawia ze światem przez [`transport.h`](components/lagunbus/include/lagunbus/transport.h)
-(wyślij, odbierz bez czekania) i [`platform.h`](components/lagunbus/include/lagunbus/platform.h)
+Biblioteka rozmawia ze światem przez [`transport.h`](lib/lagunbus-node/c/lagunbus/include/lagunbus/transport.h)
+(wyślij, odbierz bez czekania) i [`platform.h`](lib/lagunbus-node/c/lagunbus/include/lagunbus/platform.h)
 (czas, pamięć trwała, losowość). Losowość jest z konkretnego powodu: zwłoka przed
 zgłoszeniem musi być **losowa**, inaczej czterdzieści węzłów po powrocie zasilania zgłasza
 się w tej samej milisekundzie ([`03-adresacja.md`](../lagunbus-spec/03-adresacja.md) §5).
@@ -122,22 +95,11 @@ się w tej samej milisekundzie ([`03-adresacja.md`](../lagunbus-spec/03-adresacj
 | przydziału pamięci | wszystko w strukturach podanych przez aplikację; brak `malloc` w ścieżce roboczej jest na ESP32 wart więcej niż wygoda |
 | `printf` | dziennik przez wskaźnik na funkcję albo wcale |
 
-### Rejestr się generuje
+### The registry is generated — in the library
 
-```sh
-python3 tools/generate_registry.py --check
-```
-
-`registry.h` powstaje z `lagunbus-spec/registry/` i **nie wolno go poprawiać ręcznie**.
-To trzecia implementacja tych samych numerów, po hubie i jego atrapie węzła, i pierwsza,
-w której przepisanie ich z ręki byłoby naprawdę kosztowne: błąd w stałej po stronie węzła
-widać dopiero analizatorem magistrali. Nazwy w rejestrze są po polsku, a identyfikator C
-po polsku nie istnieje — tablica tłumaczeń siedzi w generatorze i jest tą samą, co po
-stronie huba; nieznana nazwa psuje generowanie celowo.
-
-Katalog typów (`types/*.md`) maszynowo czytelny **nie jest**, więc definicje endpointów są
-przepisane z ręki po raz trzeci. To najmocniejszy argument za rozstrzygnięciem punktu
-**H8** huba.
+`registry.h` is generated from `lagunbus-spec/registry/` by `lagunbus-node/tools/generate_registry.py`,
+together with its Python twin, and is never edited by hand. Nothing in this repository
+generates anything any more.
 
 ### `ShortId` to CRC-32 z całego `Uid`
 
@@ -146,7 +108,7 @@ działało tylko dlatego, że port ESP32 **odwraca MAC** (pierwsze trzy bajty MA
 Espressifa, identyczny na każdej płytce). Poprawność zależała więc od tego, jak jeden port
 składa `Uid`. Odwrócenie MAC zostaje mimo to: zmiana zmieniłaby `Uid` każdej wgranej
 płytki, a `Uid` jest tożsamością na całe życie urządzenia. Szczegóły —
-[`node.c`](components/lagunbus/src/node.c) i [`ports/esp32c3/platform.c`](ports/esp32c3/platform.c).
+[`node.c`](lib/lagunbus-node/c/lagunbus/src/node.c) i [`ports/esp32c3/platform.c`](ports/esp32c3/platform.c).
 
 ### Klucze NVS po angielsku
 
@@ -161,8 +123,8 @@ nie przebudowano — pierwszy build w kontenerze pokaże, czy po zmianie nazw ap
 
 Docker Desktop na macOS nie przepuszcza USB i nie ma na to obejścia prostszego niż to.
 Most szeregowy `rfc2217` rozważony i odrzucony: jedna ruchoma część więcej w miejscu,
-w którym i tak będzie się szukać usterek sprzętowych. Build natywny (`host/`) kontenera
-nie potrzebuje wcale — a tam zapada większość rozstrzygnięć.
+w którym i tak będzie się szukać usterek sprzętowych. The native build lives in
+`lagunbus-node` and needs no container at all — and that is where most things get settled.
 
 ### Co z tego wynika dla huba
 
@@ -261,30 +223,6 @@ klawisz **`a`**, na 15 minut). Najpierw `candump can0` na RPi, dopiero potem hub
 pokaże. Hub na Raspberry Pi — [`../hub/README.md`](../hub/README.md) § Raspberry Pi.
 
 ---
-
-## Czego jeszcze nie ma
-
-**Transakcje po stronie węzła:**
-
-- `Tid` z bajtu nagłówka i bufor deduplikacji: **8 pozycji, 300 ms**; trafiają do niego
-  **wyłącznie komendy wykonane z wynikiem `OK`** — odmowa w buforze sprawiłaby, że
-  powtórzenie po `BUSY` dostaje `BUSY` w kółko,
-- `BUSY`, gdy węzeł nie może teraz — z prawem do powtórzenia,
-- kolejka nadawcza z priorytetem: przy przepełnieniu ginie najstarszy `RAPORT`, nigdy
-  `ODPOWIEDŹ` ani `ZDARZENIE`.
-
-**Trwałość i cykl życia** (adres i stan wyjścia są już w NVS):
-
-- atrybuty trwałe i licznik restartów w NVS — nastawy mają przeżyć zanik zasilania,
-- `Reboot` (dziś `UNSUPPORTED_ELEMENT`), `Identify` — która to puszka.
-  `FactoryReset` is done: acknowledged from the old address, carried out 50 ms later —
-  the address stored as none, then `lb_platform_t.restart` (on the board `esp_restart()`).
-  Without a restart hook (host, tests) the node only drops the address and system
-  settings and rejoins; endpoint settings stay until the next power cycle,
-- wersja firmware w `Booted`: jej podniesienie ma powodować ponowną enumerację, restart bez
-  zmiany — nie.
-
-**Grupy:** węzeł deklaruje `GroupCapacity = 0` i nie obsługuje ramek rozgłoszeniowych.
 
 ## Czego świadomie nie robimy
 

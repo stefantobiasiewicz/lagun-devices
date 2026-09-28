@@ -1,0 +1,3 @@
+[submodule "lib/lagunbus-node"]
+	path = lib/lagunbus-node
+	url = git@github.com:stefantobiasiewicz/lagunbus-node.git
