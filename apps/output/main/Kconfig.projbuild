@@ -1,0 +1,39 @@
+menu "LagunBus — output"
+
+config LAGUN_TWAI_TX
+    int "TWAI transmit GPIO"
+    default 4
+    help
+        4 and 5 by default, because on the ESP32-C3 Super Mini they are broken out
+        and play no other role. AVOID 2, 8 and 9 — those are boot-mode strapping
+        pins, and their state at reset decides whether the board starts at all.
+        Avoid 18 and 19 too: USB Serial/JTAG goes that way, that is, flashing and
+        the log.
+
+config LAGUN_TWAI_RX
+    int "TWAI receive GPIO"
+    default 5
+
+config LAGUN_RELAY_GPIO
+    int "Relay GPIO"
+    default 10
+    help
+        A relay module driven by a LOW level has `Invert` set in the endpoint's
+        attributes. Check yours — the mistake shows as a relay switched on the
+        whole time except for the moment it is meant to be on.
+
+config LAGUN_LED_GPIO
+    int "On-board LED GPIO (-1 = none)"
+    default 8
+    help
+        On the Super Mini the LED sits on GPIO8 and lights on a low level. It is a
+        boot-mode strapping pin, but after boot it may be used as an output.
+
+config LAGUN_BITRATE
+    int "Bus speed [bit/s]"
+    default 500000
+    help
+        Has to agree with the hub and with EVERY other node. A node at a different
+        speed not only hears nobody — it corrupts frames for all the others.
+
+endmenu

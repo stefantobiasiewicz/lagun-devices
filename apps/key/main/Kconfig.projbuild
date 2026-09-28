@@ -1,0 +1,31 @@
+menu "LagunBus — key"
+
+config LAGUN_TWAI_TX
+    int "TWAI transmit GPIO"
+    default 4
+    help
+        4 and 5 by default, because on the ESP32-C3 Super Mini they are broken out
+        and play no other role. AVOID 2, 8 and 9 — those are boot-mode strapping
+        pins, and their state at reset decides whether the board starts at all.
+        Avoid 18 and 19 too: USB Serial/JTAG goes that way, that is, flashing and
+        the log.
+
+config LAGUN_TWAI_RX
+    int "TWAI receive GPIO"
+    default 5
+
+config LAGUN_KEY_GPIO
+    int "Key GPIO"
+    default 3
+    help
+        A key shorting to ground, with the internal pull-up. The resting state is
+        then high, so `Invert` in the endpoint's attributes is on.
+
+config LAGUN_BITRATE
+    int "Bus speed [bit/s]"
+    default 500000
+    help
+        Has to agree with the hub and with EVERY other node. A node at a different
+        speed not only hears nobody — it corrupts frames for all the others.
+
+endmenu

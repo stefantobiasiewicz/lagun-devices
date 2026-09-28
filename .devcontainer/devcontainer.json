@@ -1,0 +1,40 @@
+{
+  "name": "LagunBus — ESP-IDF",
+
+  // The version is PINNED. ESP-IDF can change APIs between releases — in 5.2 the TWAI
+  // driver got a new interface alongside the old one — and firmware that builds
+  // differently depending on the day cannot be fixed remotely.
+  "image": "espressif/idf:v5.3.1",
+
+  "runArgs": ["--name", "lagunbus-idf"],
+
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools"
+      ],
+      "settings": {
+        "C_Cpp.default.compilerPath": "/opt/esp/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+        "C_Cpp.default.compileCommands": "${workspaceFolder}/apps/output/build/compile_commands.json"
+      }
+    }
+  },
+
+  // The container does NOT get the serial port. On macOS Docker runs in a virtual
+  // machine that USB does not reach — which is why we build in the container and flash
+  // from the host (tools/flash.sh). Trying to pass /dev/cu.* through ends in a
+  // no-such-device message and an hour spent looking for the cause.
+  "remoteUser": "root",
+
+  // The image sets IDF_PATH, but `idf.py` only lands on PATH once export.sh has been
+  // sourced — which VS Code does not do, because it opens a plain bash instead of the
+  // image entrypoint. Without this line every new shell says "idf.py: command not
+  // found". The marker is our own, because the image already has a `get_idf` alias in
+  // .bashrc pointing at the same file — a plain grep for the path would hit the alias
+  // and conclude the job was done.
+  "postCreateCommand": "grep -q LAGUNBUS_IDF ~/.bashrc || printf '# LAGUNBUS_IDF\\n. /opt/esp/idf/export.sh > /dev/null 2>&1\\n' >> ~/.bashrc"
+}
