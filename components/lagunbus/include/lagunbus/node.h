@@ -101,6 +101,19 @@ typedef struct {
  */
 typedef void (*lb_watch_fn)(void *ctx, const lb_frame_t *frame, bool outgoing);
 
+/** The reporting settings of one system endpoint.
+ *
+ * A system endpoint has the full set of common attributes (01-model-danych.md §4.1).
+ * `Channel` and `Enabled` are fixed there and `QueryEnabled` is 0, so these three are
+ * all that can actually differ — and the silence threshold is worked out from the
+ * `ReportInterval` of `Diagnostics` (06-cykl-zycia-urzadzenia.md §5.1).
+ */
+typedef struct {
+    uint16_t report_interval;
+    uint16_t report_min_gap;
+    uint16_t report_hysteresis;
+} lb_reporting_t;
+
 typedef struct {
     lb_transport_t *bus;
     lb_platform_t  *platform;
@@ -128,8 +141,10 @@ typedef struct {
     uint32_t dropped;
     uint8_t  device_event_seq;
 
-    /** `Diagnostics.ErrorThreshold` — the only setting the system endpoints have. */
+    /** `Diagnostics.ErrorThreshold` — the only setting of the system types themselves. */
     uint16_t error_threshold;
+    /** Common reporting attributes of ep0..ep2 — indexed by endpoint number. */
+    lb_reporting_t system_reporting[LB_EP_GROUPS + 1u];
     uint16_t bus_off_count;
 
     /** Traffic watch. NULL means "do not look" and costs nothing. */

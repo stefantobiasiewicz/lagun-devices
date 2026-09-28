@@ -24,6 +24,10 @@ void lb_node_init(lb_node_t *node, lb_transport_t *bus, lb_platform_t *platform,
     node->endpoint_count = count;
     node->reset_reason = LB_RESET_POWER_ON;
     node->error_threshold = 96; /* default from the Diagnostics type definition */
+    /* Defaults from types/0x0002-diagnostics.md §5.4: counters jitter at every frame,
+     * so a report every change would load the bus the diagnostics is meant to watch. */
+    node->system_reporting[LB_EP_DIAGNOSTICS].report_interval = 300;
+    node->system_reporting[LB_EP_DIAGNOSTICS].report_hysteresis = 16;
 }
 
 uint32_t lb_node_short_id(const lb_node_t *node)
@@ -399,23 +403,45 @@ static uint8_t groups_read(lb_node_t *node, uint8_t element,
     return *len ? LB_RESULT_OK : LB_RESULT_FAILURE;
 }
 
-/** Common attributes of the system endpoints — the same as in `lb_endpoint_read`,
- * except there is no endpoint description to take them from, because the system ones
- * are not in the array. */
-static uint8_t system_common_read(uint8_t endpoint, uint8_t element,
+/** Common attributes of the system endpoints — the same set as in `lb_endpoint_read`
+ * (01-model-danych.md §4.1), except there is no endpoint description to take them
+ * from, because the system ones are not in the array.
+ *
+ * `Channel` is always 0 and `Enabled` always 1: a system endpoint is not a function of
+ * any channel, and a disabled `Device` or `Diagnostics` would cut the hub off from the
+ * node's identity or from noticing that it has gone quiet.
+ */
+static uint8_t system_common_read(lb_node_t *node, uint8_t endpoint, uint8_t element,
                                   uint8_t *out, uint8_t cap, uint8_t *len)
 {
-    uint16_t type_id = endpoint == LB_EP_DIAGNOSTICS ? LB_TYPE_DIAGNOSTICS : LB_TYPE_GROUPS;
+    static const uint16_t type_ids[] = {LB_TYPE_DEVICE, LB_TYPE_DIAGNOSTICS, LB_TYPE_GROUPS};
+    const lb_reporting_t *reporting = &node->system_reporting[endpoint];
     *len = 0;
     switch (element) {
     case LB_COMMON_TYPEID:
-        *len = lb_encode(LB_T_U16, LB_NUM(type_id), out, cap);
+        *len = lb_encode(LB_T_U16, LB_NUM(type_ids[endpoint]), out, cap);
         break;
     case LB_COMMON_TYPEREVISION:
         *len = lb_encode(LB_T_U8, LB_NUM(1), out, cap);
         break;
     case LB_COMMON_FEATURES:
-        *len = lb_encode(LB_T_U16, LB_NUM(0), out, cap);
+    case LB_COMMON_QUERYENABLED:
+        *len = lb_encode(LB_T_MAP16, LB_NUM(0), out, cap);
+        break;
+    case LB_COMMON_ENABLED:
+        *len = lb_encode(LB_T_BOOL, LB_NUM(1), out, cap);
+        break;
+    case LB_COMMON_CHANNEL:
+        *len = lb_encode(LB_T_U8, LB_NUM(0), out, cap);
+        break;
+    case LB_COMMON_REPORTINTERVAL:
+        *len = lb_encode(LB_T_U16, LB_NUM(reporting->report_interval), out, cap);
+        break;
+    case LB_COMMON_REPORTMINGAP:
+        *len = lb_encode(LB_T_U16, LB_NUM(reporting->report_min_gap), out, cap);
+        break;
+    case LB_COMMON_REPORTHYSTERESIS:
+        *len = lb_encode(LB_T_U16, LB_NUM(reporting->report_hysteresis), out, cap);
         break;
     default:
         return LB_RESULT_UNSUPPORTED_ELEMENT;
@@ -423,29 +449,82 @@ static uint8_t system_common_read(uint8_t endpoint, uint8_t element,
     return *len ? LB_RESULT_OK : LB_RESULT_FAILURE;
 }
 
+/** Writing the common attributes of a system endpoint.
+ *
+ * Only the reporting settings take a new value. `Enabled` accepts 1, which changes
+ * nothing, and refuses 0 with `INVALID_VALUE` — the attribute is writable, just not
+ * to that value. `QueryEnabled` is the same: the system types declare no inputs, so
+ * the only valid map is 0.
+ */
+static uint8_t system_common_write(lb_node_t *node, uint8_t endpoint, uint8_t element,
+                                   const uint8_t *data, uint8_t len)
+{
+    lb_reporting_t *reporting = &node->system_reporting[endpoint];
+    lb_value_t v;
+    switch (element) {
+    case LB_COMMON_TYPEID:
+    case LB_COMMON_TYPEREVISION:
+    case LB_COMMON_FEATURES:
+    case LB_COMMON_CHANNEL:
+        return LB_RESULT_READ_ONLY;
+    case LB_COMMON_ENABLED:
+        if (!lb_decode(LB_T_BOOL, data, len, &v) || v.absent || v.value == 0) {
+            return LB_RESULT_INVALID_VALUE;
+        }
+        return LB_RESULT_OK;
+    case LB_COMMON_QUERYENABLED:
+        if (!lb_decode(LB_T_MAP16, data, len, &v) || v.absent || v.value != 0) {
+            return LB_RESULT_INVALID_VALUE;
+        }
+        return LB_RESULT_OK;
+    case LB_COMMON_REPORTINTERVAL:
+    case LB_COMMON_REPORTMINGAP:
+    case LB_COMMON_REPORTHYSTERESIS:
+        if (!lb_decode(LB_T_U16, data, len, &v) || v.absent) {
+            return LB_RESULT_INVALID_VALUE;
+        }
+        break;
+    default:
+        return LB_RESULT_UNSUPPORTED_ELEMENT;
+    }
+    uint16_t value = (uint16_t)v.value;
+    if (element == LB_COMMON_REPORTINTERVAL) {
+        reporting->report_interval = value;
+    } else if (element == LB_COMMON_REPORTMINGAP) {
+        reporting->report_min_gap = value;
+    } else {
+        reporting->report_hysteresis = value;
+    }
+    return LB_RESULT_OK;
+}
+
 static uint8_t system_read(lb_node_t *node, uint8_t endpoint, uint8_t element,
                            uint8_t *out, uint8_t cap, uint8_t *len)
 {
+    *len = 0;
+    if (endpoint > LB_EP_GROUPS) {
+        return LB_RESULT_UNSUPPORTED_ENDPOINT; /* ep3 Scenes — not in this device */
+    }
     if (element >= LB_COMMON_BASE) {
-        return system_common_read(endpoint, element, out, cap, len);
+        return system_common_read(node, endpoint, element, out, cap, len);
     }
     if (endpoint == LB_EP_DIAGNOSTICS) {
         return diagnostics_read(node, element, out, cap, len);
     }
-    if (endpoint == LB_EP_GROUPS) {
-        return groups_read(node, element, out, cap, len);
-    }
-    return LB_RESULT_UNSUPPORTED_ENDPOINT; /* ep3 Scenes — not in this device */
+    return groups_read(node, element, out, cap, len);
 }
 
 static uint8_t system_write(lb_node_t *node, uint8_t endpoint, uint8_t element,
                             const uint8_t *data, uint8_t len)
 {
-    if (endpoint != LB_EP_DIAGNOSTICS && endpoint != LB_EP_GROUPS) {
+    if (endpoint > LB_EP_GROUPS) {
         return LB_RESULT_UNSUPPORTED_ENDPOINT; /* ep3 Scenes — not in this device */
     }
-    /* The only setting the system endpoints have. The rest are counters and
-     * description — those are read. */
+    if (element >= LB_COMMON_BASE) {
+        return system_common_write(node, endpoint, element, data, len);
+    }
+    /* The only setting of the system types themselves. The rest are counters and
+     * description — those are read. `Device` describes the device and has none. */
     if (endpoint != LB_EP_DIAGNOSTICS || element != LB_DIAG_ERROR_THRESHOLD) {
         return LB_RESULT_READ_ONLY;
     }
@@ -527,7 +606,7 @@ static void handle_frame(lb_node_t *node, const lb_frame_t *frame)
     uint8_t result;
 
     if (f.kind == LB_KIND_READ) {
-        if (f.endpoint == LB_EP_DEVICE) {
+        if (f.endpoint == LB_EP_DEVICE && f.element < LB_COMMON_BASE) {
             result = device_read(node, f.element, data, sizeof data, &len);
         } else if (f.endpoint < LB_EP_FIRST_USER) {
             result = system_read(node, f.endpoint, f.element, data, sizeof data, &len);
@@ -539,9 +618,7 @@ static void handle_frame(lb_node_t *node, const lb_frame_t *frame)
         }
     } else if (f.kind == LB_KIND_WRITE) {
         lb_endpoint_t *ep = lb_node_endpoint(node, f.endpoint);
-        if (f.endpoint == LB_EP_DEVICE) {
-            result = LB_RESULT_READ_ONLY; /* Device describes the device, not settings */
-        } else if (f.endpoint < LB_EP_FIRST_USER) {
+        if (f.endpoint < LB_EP_FIRST_USER) {
             result = system_write(node, f.endpoint, f.element, frame->data + 1,
                                  (uint8_t)(frame->len - 1u));
         } else if (ep == NULL) {

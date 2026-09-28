@@ -433,6 +433,69 @@ int main(void)
         LB_ASSERT(result == LB_RESULT_OK && v.value == LB_TYPE_DIAGNOSTICS);
     }
 
+    LB_TEST("Device has the common attributes as well — ep0 is no exception");
+    {
+        push_frame(&m, LB_KIND_READ, ADDRESS, 0, LB_COMMON_TYPEID, 0, NULL, 0);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        lb_value_t v;
+        lb_decode(LB_T_U16, data, 2, &v);
+        LB_ASSERT(result == LB_RESULT_OK && v.value == LB_TYPE_DEVICE);
+    }
+
+    LB_TEST("a system endpoint: Channel 0, Enabled 1");
+    {
+        push_frame(&m, LB_KIND_READ, ADDRESS, 2, LB_COMMON_CHANNEL, 0, NULL, 0);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_OK && len == 1 && data[0] == 0);
+
+        push_frame(&m, LB_KIND_READ, ADDRESS, 0, LB_COMMON_ENABLED, 0, NULL, 0);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_OK && len == 1 && data[0] == 1);
+    }
+
+    LB_TEST("a system endpoint cannot be disabled — INVALID_VALUE, not READ_ONLY");
+    {
+        uint8_t off[1] = {0};
+        push_frame(&m, LB_KIND_WRITE, ADDRESS, 1, LB_COMMON_ENABLED, 0, off, 1);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_INVALID_VALUE);
+
+        uint8_t on[1] = {1};
+        push_frame(&m, LB_KIND_WRITE, ADDRESS, 1, LB_COMMON_ENABLED, 0, on, 1);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_OK);
+    }
+
+    LB_TEST("Diagnostics reports every 300 s by default, and that can be changed");
+    {
+        push_frame(&m, LB_KIND_READ, ADDRESS, 1, LB_COMMON_REPORTINTERVAL, 0, NULL, 0);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        lb_value_t v;
+        lb_decode(LB_T_U16, data, 2, &v);
+        LB_ASSERT(result == LB_RESULT_OK && v.value == 300);
+
+        uint8_t minute[2] = {60, 0};
+        push_frame(&m, LB_KIND_WRITE, ADDRESS, 1, LB_COMMON_REPORTINTERVAL, 0, minute, 2);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_OK
+                  && node.system_reporting[LB_EP_DIAGNOSTICS].report_interval == 60);
+    }
+
+    LB_TEST("a common attribute of the absent ep3 is still UNSUPPORTED_ENDPOINT");
+    {
+        push_frame(&m, LB_KIND_READ, ADDRESS, 3, LB_COMMON_REPORTINTERVAL, 0, NULL, 0);
+        lb_node_tick(&node);
+        last_result(&m, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_UNSUPPORTED_ENDPOINT);
+    }
+
     LB_TEST("ep3 Scenes does not exist in this device");
     {
         push_frame(&m, LB_KIND_READ, ADDRESS, 3, 0x00, 0, NULL, 0);
