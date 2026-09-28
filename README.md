@@ -7,7 +7,7 @@ The protocol itself is **not here**. The node library — C for this firmware, P
 simulators — lives in its own repository, [`../lagunbus-node/`](../lagunbus-node/), and
 comes in as a submodule. What this repository keeps is the glue between that library and
 a board: the ESP32-C3 port, the two applications, the ESP-IDF container and the flashing
-scripts (zadania/FEAT-03.md).
+scripts (zadania/zrobione/FEAT-03.md).
 
 Protokół opisuje [`../lagunbus-spec/`](../lagunbus-spec/), drugą stroną kontraktu jest
 [`../hub/`](../hub/).
@@ -25,6 +25,10 @@ odsyła `Uid` segmentami i ogłasza `Booted`. What the library still lacks is li
 git submodule update --init          # once after cloning: fills lib/lagunbus-node
 ```
 
+> **TODO:** the library has no GitHub repository yet, so `git submodule update` works only
+> on the machine that has the local clone. See the TODO at the top of
+> `lib/lagunbus-node/README.md`.
+
 ```
   lib/lagunbus-node/c/lagunbus/     ← the library, an ESP-IDF component
             │
@@ -37,7 +41,31 @@ Both applications point `EXTRA_COMPONENT_DIRS` at `lib/lagunbus-node/c/lagunbus`
 `ports/esp32c3`. A submodule rather than a path to the sibling directory: the ESP-IDF
 container mounts only this repository, so `../lagunbus-node` does not exist where the
 image is built — and the submodule pins the exact library commit a firmware was built
-against. Updating the library is `git -C lib/lagunbus-node pull` and a commit here.
+against.
+
+### After changing the library — two steps, both needed
+
+This repository records **a commit** of the library, not "the latest". A change pushed
+to `lagunbus-node` does not reach the firmware until the pointer here moves:
+
+```sh
+# 1. in lagunbus-node: commit and push the change
+# 2. here: fetch it into the submodule AND record the new pointer
+git -C lib/lagunbus-node pull
+git add lib/lagunbus-node && git commit -m "Biblioteka węzła: …"
+```
+
+- without step 2 the image keeps building from the old library — deliberately: nothing
+  changes the firmware by accident, and the history here says which library a build used;
+- without the `git add` + commit the update exists only on this machine; a fresh clone's
+  `git submodule update` puts the old commit back;
+- a plain `git pull` here does **not** update the submodule's files. After pulling, or on
+  a fresh clone, run `git submodule update --init` — or set it once with
+  `git config submodule.recurse true`.
+
+Working on the library for the firmware? Edit it right in `lib/lagunbus-node` — it is a
+full clone: commit and push from there, then step 2 without the `pull`. The sibling
+`../lagunbus-node` then falls behind until it pulls.
 
 The native build, the unit tests, `lagun-node` on SocketCAN and the registry generator
 all moved with the library — see its README. Everything that can be checked without a

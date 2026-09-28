@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # The library comes from the `lagunbus-node` repository, checked out as a submodule in
-# `lib/lagunbus-node` (zadania/FEAT-03.md, N3). A submodule rather than a path to a
+# `lib/lagunbus-node` (zadania/zrobione/FEAT-03.md, N3). A submodule rather than a path to a
 # sibling directory: the ESP-IDF container mounts only this repository, so
 # `../lagunbus-node` does not exist where the image is built — and a submodule pins the
 # exact library commit this firmware was built against.
