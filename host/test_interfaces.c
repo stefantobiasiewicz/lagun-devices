@@ -46,7 +46,7 @@ int main(void)
 {
     mock_t state = {0};
     lb_transport_t bus = {.send = mock_send, .recv = mock_recv, .ctx = &state};
-    lb_platform_t system = {mock_millis, NULL, NULL, NULL, &state};
+    lb_platform_t system = {.millis = mock_millis, .ctx = &state};
 
     printf("port interfaces\n");
 

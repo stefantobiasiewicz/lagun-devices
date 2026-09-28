@@ -37,6 +37,16 @@ extern "C" {
 #define LB_DEV_LAST_RESET        0x12u
 #define LB_DEV_EVENT_BOOTED      0x01u
 
+/* `Device` commands (types/0x0001-device.md §3). */
+#define LB_DEV_CMD_FACTORY_RESET 0x02u
+/** The argument without which `FactoryReset` is refused — the characters `LAGN`. A single
+ * flipped bit must not wipe a node in the wall (types/0x0001-device.md §3.3). */
+#define LB_FACTORY_RESET_MAGIC   0x4C41474Eu
+/** How long after acknowledging a reset the node carries it out. The acknowledgement is
+ * only QUEUED when the handler returns; restarting at once would lose it, and the hub
+ * would not know whether the reset happened. */
+#define LB_RESET_GRACE_MS        50u
+
 /** `Diagnostics` (ep1) and `Groups` (ep2) elements.
  *
  * These two endpoints are served by **the node itself**, just like `Device`: they are
@@ -134,6 +144,10 @@ typedef struct {
 
     uint32_t started_ms;
     bool     booted;
+
+    /** A factory reset acknowledged and not yet carried out — see `LB_RESET_GRACE_MS`. */
+    bool     reset_pending;
+    uint32_t reset_at_ms;
 
     /* Counters — for Diagnostics, and for seeing whether anything works at all. */
     uint32_t received;

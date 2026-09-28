@@ -39,6 +39,14 @@ typedef struct lb_platform {
      */
     uint32_t (*random)(void *ctx);
 
+    /** Restart the node. Optional, and on the board it does not return.
+     *
+     * Needed by `FactoryReset`: most configuration lives only in RAM and returns to its
+     * defaults exactly by restarting (types/0x0001-device.md §3.3). `NULL` — a test, the
+     * host binary — makes the library do what it can without one: forget the address
+     * and go back to joining, leaving the endpoints' settings as they are. */
+    void (*restart)(void *ctx);
+
     void *ctx;
 } lb_platform_t;
 

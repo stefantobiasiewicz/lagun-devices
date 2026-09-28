@@ -54,6 +54,26 @@ static uint32_t m_random(void *ctx)
     return ((bus_t *)ctx)->jitter;
 }
 
+/* A board restart as the test sees it: counted, and the last address the node stored
+ * before it. The real one does not return; this one does, so the test can look. */
+static int restarts = 0;
+static uint16_t stored_address = 0xFFFFu;
+
+static void m_restart(void *ctx)
+{
+    (void)ctx;
+    restarts++;
+}
+
+static bool m_store(void *ctx, const char *key, const void *data, size_t len)
+{
+    (void)ctx;
+    if (strcmp(key, "address") == 0 && len == sizeof stored_address) {
+        memcpy(&stored_address, data, len);
+    }
+    return true;
+}
+
 /** Push in a frame "from the hub".
  *
  * It also clears whatever the node sent earlier, so that each test looks at ITS OWN
@@ -625,6 +645,70 @@ int main(void)
         m2.clock += 600000; /* ten minutes later */
         lb_node_tick(&fresh);
         LB_ASSERT(m2.sent == 0);
+    }
+
+    printf("\nfactory reset (types/0x0001-device.md §3.3)\n");
+
+    /* `fresh` has just been given 0x0A7 — the node the hub found at an address it did not
+     * know, and the operator chose to send back to joining
+     * (06-cykl-zycia-urzadzenia.md §2.3). */
+    uint8_t magic[4];
+    lb_encode(LB_T_U32, LB_NUM((int32_t)LB_FACTORY_RESET_MAGIC), magic, 4);
+
+    LB_TEST("without the right argument FactoryReset is refused and nothing happens");
+    {
+        uint8_t wrong[4] = {0, 0, 0, 0};
+        push_frame(&m2, LB_KIND_COMMAND, 0x0A7, 0, LB_DEV_CMD_FACTORY_RESET, 1, wrong, 4);
+        lb_node_tick(&fresh);
+        last_result(&m2, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_INVALID_VALUE);
+        m2.clock += 1000;
+        lb_node_tick(&fresh);
+        LB_ASSERT(fresh.address == 0x0A7);
+    }
+
+    LB_TEST("the acknowledgement leaves from the OLD address — the hub has to hear it");
+    {
+        push_frame(&m2, LB_KIND_COMMAND, 0x0A7, 0, LB_DEV_CMD_FACTORY_RESET, 2, magic, 4);
+        lb_node_tick(&fresh);
+        last_result(&m2, &result, &tid, &data, &len);
+        LB_ASSERT(result == LB_RESULT_OK && tid == 2);
+        LB_ASSERT(lb_decode_id(m2.from_node[m2.sent - 1].can_id).address == 0x0A7);
+        LB_ASSERT(fresh.address == 0x0A7); /* not yet — the reply is only queued */
+    }
+
+    LB_TEST("after the grace period the address is gone and the node announces anew");
+    {
+        m2.sent = 0;
+        m2.clock += LB_RESET_GRACE_MS;
+        lb_node_tick(&fresh);
+        LB_ASSERT(fresh.address == LB_ADDRESS_UNASSIGNED);
+        LB_ASSERT(fresh.join_attempts == 0);
+
+        m2.clock = fresh.next_join_ms;
+        lb_node_tick(&fresh);
+        LB_ASSERT(m2.sent == 1 && lb_is_join(m2.from_node[0].can_id));
+    }
+
+    LB_TEST("with a restart available: the address is STORED as none, then the restart");
+    {
+        bus_t m3 = {0};
+        lb_transport_t bus3 = {.send = m_send, .recv = m_recv, .ctx = &m3};
+        lb_platform_t plat3 = {
+            .millis = m_millis, .store = m_store, .restart = m_restart, .ctx = &m3,
+        };
+        lb_node_t board;
+        lb_node_init(&board, &bus3, &plat3, &identity_cfg, endpoints, 1);
+        board.address = ADDRESS;
+        lb_node_start(&board);
+
+        push_frame(&m3, LB_KIND_COMMAND, ADDRESS, 0, LB_DEV_CMD_FACTORY_RESET, 0, magic, 4);
+        lb_node_tick(&board);
+        LB_ASSERT(restarts == 0);
+        m3.clock += LB_RESET_GRACE_MS;
+        lb_node_tick(&board);
+        LB_ASSERT(restarts == 1);
+        LB_ASSERT(stored_address == LB_ADDRESS_UNASSIGNED);
     }
 
     LB_SUMMARY();

@@ -2,6 +2,7 @@
 
 #include "esp_mac.h"
 #include "esp_random.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -54,6 +55,15 @@ static uint32_t esp_rand(void *ctx)
     return esp_random();
 }
 
+static void esp_restart_node(void *ctx)
+{
+    (void)ctx;
+    /* The acknowledgement of FactoryReset left the TWAI queue during the grace period
+     * the library waited (LB_RESET_GRACE_MS); what is still in RAM goes with the
+     * restart, which is the point. */
+    esp_restart();
+}
+
 esp_err_t lb_esp_platform_init(lb_platform_t *out)
 {
     esp_err_t err = nvs_flash_init();
@@ -72,6 +82,7 @@ esp_err_t lb_esp_platform_init(lb_platform_t *out)
     out->store = esp_store;
     out->load = esp_load;
     out->random = esp_rand;
+    out->restart = esp_restart_node;
     out->ctx = NULL;
     return ESP_OK;
 }

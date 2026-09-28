@@ -12,6 +12,7 @@
 
 static void schedule_announce(lb_node_t *node);
 static void announce_booted(lb_node_t *node);
+static void system_defaults(lb_node_t *node);
 
 void lb_node_init(lb_node_t *node, lb_transport_t *bus, lb_platform_t *platform,
                   const lb_identity_t *identity, lb_endpoint_t *endpoints, uint8_t count)
@@ -23,6 +24,14 @@ void lb_node_init(lb_node_t *node, lb_transport_t *bus, lb_platform_t *platform,
     node->endpoints = endpoints;
     node->endpoint_count = count;
     node->reset_reason = LB_RESET_POWER_ON;
+    system_defaults(node);
+}
+
+/** The settings of the system types themselves — at start, and again at a factory
+ * reset. */
+static void system_defaults(lb_node_t *node)
+{
+    memset(node->system_reporting, 0, sizeof node->system_reporting);
     node->error_threshold = 96; /* default from the Diagnostics type definition */
     /* Defaults from types/0x0002-diagnostics.md §5.4: counters jitter at every frame,
      * so a report every change would load the bus the diagnostics is meant to watch. */
@@ -562,6 +571,56 @@ static uint8_t system_command(lb_node_t *node, uint8_t endpoint, uint8_t element
     return LB_RESULT_UNSUPPORTED_ELEMENT;
 }
 
+/** `Device` commands. Only `FactoryReset` so far — `Identify` and `Reboot` still answer
+ * `UNSUPPORTED_ELEMENT`.
+ *
+ * `FactoryReset` is what the operator reaches for when the hub finds a node at an address
+ * it does not know (06-cykl-zycia-urzadzenia.md §2.3): the node has to forget the
+ * address and come back as a new device. It is only ACKNOWLEDGED here — the reply still
+ * has to leave from the old address, as with a write to `Address`
+ * (06-cykl-zycia-urzadzenia.md §4.2) — and carried out in `lb_node_tick`.
+ */
+static uint8_t device_command(lb_node_t *node, uint8_t element,
+                              const uint8_t *args, uint8_t len)
+{
+    if (element != LB_DEV_CMD_FACTORY_RESET) {
+        return LB_RESULT_UNSUPPORTED_ELEMENT;
+    }
+    lb_value_t magic;
+    if (len < 4 || !lb_decode(LB_T_U32, args, 4, &magic)
+        || (uint32_t)magic.value != LB_FACTORY_RESET_MAGIC) {
+        return LB_RESULT_INVALID_VALUE;
+    }
+    node->reset_pending = true;
+    node->reset_at_ms = node->platform->millis(node->platform->ctx) + LB_RESET_GRACE_MS;
+    return LB_RESULT_OK;
+}
+
+/** Carry out an acknowledged factory reset.
+ *
+ * The address goes first and into the persistent store: whatever happens next — a
+ * restart, a power cut half-way — the node comes back without it and announces itself.
+ * Only then the restart, which returns everything held in RAM to its defaults.
+ */
+static void factory_reset(lb_node_t *node)
+{
+    node->reset_pending = false;
+    node->address = LB_ADDRESS_UNASSIGNED;
+    if (node->platform->store != NULL) {
+        node->platform->store(node->platform->ctx, NVS_KEY_ADDRESS, &node->address,
+                              sizeof node->address);
+    }
+    if (node->platform->restart != NULL) {
+        node->platform->restart(node->platform->ctx);
+        return; /* on the board: never reached */
+    }
+    /* Without a restart the system settings are all we can put back — the endpoints'
+     * defaults live in the application's arrays, not here. */
+    system_defaults(node);
+    node->join_attempts = 0;
+    schedule_announce(node);
+}
+
 static void respond(lb_node_t *node, const lb_fields_t *f, uint8_t tid,
                       uint8_t result, const uint8_t *data, uint8_t len)
 {
@@ -631,7 +690,8 @@ static void handle_frame(lb_node_t *node, const lb_frame_t *frame)
         lb_endpoint_t *ep = lb_node_endpoint(node, f.endpoint);
         if (f.endpoint < LB_EP_FIRST_USER) {
             result = f.endpoint == LB_EP_DEVICE
-                  ? LB_RESULT_UNSUPPORTED_ELEMENT /* Reboot is not implemented yet */
+                  ? device_command(node, f.element, frame->data + 1,
+                                   (uint8_t)(frame->len - 1u))
                   : system_command(node, f.endpoint, f.element);
         } else if (ep == NULL) {
             result = LB_RESULT_UNSUPPORTED_ENDPOINT;
@@ -662,6 +722,11 @@ void lb_node_tick(lb_node_t *node)
 {
     if (!node->booted) {
         return; /* before Booted a node ANSWERS NOTHING (types/0x0001-device.md §5.1) */
+    }
+
+    if (node->reset_pending
+        && (int32_t)(node->platform->millis(node->platform->ctx) - node->reset_at_ms) >= 0) {
+        factory_reset(node);
     }
 
     /* Having no address is the only condition: a node that receives one stops meeting

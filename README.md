@@ -276,9 +276,11 @@ pokaże. Hub na Raspberry Pi — [`../hub/README.md`](../hub/README.md) § Raspb
 **Trwałość i cykl życia** (adres i stan wyjścia są już w NVS):
 
 - atrybuty trwałe i licznik restartów w NVS — nastawy mają przeżyć zanik zasilania,
-- `FactoryReset` z magiczną liczbą — bez niej ani drgnie; kasuje adres, węzeł zgłasza się
-  od nowa,
-- `Reboot` (dziś `UNSUPPORTED_ELEMENT`), `Identify` — która to puszka,
+- `Reboot` (dziś `UNSUPPORTED_ELEMENT`), `Identify` — która to puszka.
+  `FactoryReset` is done: acknowledged from the old address, carried out 50 ms later —
+  the address stored as none, then `lb_platform_t.restart` (on the board `esp_restart()`).
+  Without a restart hook (host, tests) the node only drops the address and system
+  settings and rejoins; endpoint settings stay until the next power cycle,
 - wersja firmware w `Booted`: jej podniesienie ma powodować ponowną enumerację, restart bez
   zmiany — nie.
 
