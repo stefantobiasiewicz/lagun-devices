@@ -1,10 +1,10 @@
 /* Output — ESP32-C3 Super Mini + CAN transceiver + relay module.
  *
- * Same as with the key: `PowerOnBehaviour`, `AutoOffTime` and `MinGap`-limited reports
- * live in `components/lagunbus/output.c` and are tested on a computer
- * (`host/test_output.c`). What is left here is the relay pin and the LED.
+ * `PowerOnBehaviour`, `AutoOffTime` and `MinGap`-limited reports live in the library
+ * (lib/lagunbus-node, `lagunbus/types/output.h`) and are tested on a computer against
+ * `vectors/scenarios/output.json`. What is left here is the relay pin and the LED.
  */
-#include "lagunbus/output.h"
+#include "lagunbus/types/output.h"
 #include "lagunbus/registry.h"
 #include "lb_esp32c3.h"
 

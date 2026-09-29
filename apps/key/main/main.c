@@ -1,11 +1,20 @@
-/* Key — ESP32-C3 Super Mini + CAN transceiver.
+/* Key — ESP32-C3 Super Mini + CAN transceiver. One key, with multi-click.
  *
- * This file is THIN, and that is deliberate. Everything that can be got wrong —
- * contact bounce, the multi-click window, the hold threshold — lives in
- * `components/lagunbus/key.c` and is tested on a computer (`host/test_key.c`). What is
- * left here is reading the pin and passing it on.
+ * This file makes the DEVICE's decisions and nothing else; the library gives the tools
+ * (lib/lagunbus-node, `key.h` and `debounce.h`, tested on a computer against
+ * `vectors/scenarios/key*.json`). The decisions, all in one place below:
+ *
+ *   - features: MULTICLICK only — `Click(1…MaxClicks)`, no hold, no RAW;
+ *   - exposed to the hub: `EventMode` (CLICK or MULTICLICK), the multi-click window and
+ *     `MaxClicks`, and `PressCount`;
+ *   - polarity: the key shorts to ground, so a LOW pin is a press;
+ *   - bounce: 15 ms, filtered here — not an attribute (types/0x0010-key-input.md §5.7).
+ *
+ * The type's default mode is CLICK; the hub switches this key to MULTICLICK through
+ * `EventMode` in its configuration.
  */
-#include "lagunbus/key.h"
+#include "lagunbus/tools/debounce.h"
+#include "lagunbus/types/key.h"
 #include "lagunbus/registry.h"
 #include "lb_esp32c3.h"
 
@@ -20,31 +29,40 @@ static const char *TAG = "key";
 
 #define EP_KEY 4
 
-/* Endpoint attributes. The initial values are the ones from the type definition —
- * the hub will write its own while reconciling anyway, but the node has to work on
- * its own too. */
+/** 15 ms is past a mechanical key's bounce and well under the ~80 ms a finger stays
+ * on it. The pin is polled every 2 ms below, so a press is never missed. */
+#define DEBOUNCE_MS 15u
+
+/* What the hub may see and tune. The initial values are the type's defaults — the hub
+ * writes its own while reconciling, but the node has to work on its own too. */
 static lb_attr_t attributes[] = {
-    {LB_KEY_PRESS_COUNT,        LB_T_U32,   LB_RO,              LB_NUM(0)},
-    {LB_KEY_DEBOUNCE_TIME,      LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(15)},
-    {LB_KEY_EVENT_MODE,         LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(LB_KEY_MODE_CLICK)},
-    {LB_KEY_MULTI_CLICK_WINDOW, LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(350)},
-    {LB_KEY_MAX_CLICKS,         LB_T_U8,    LB_RW | LB_PERSIST, LB_NUM(3)},
-    {LB_KEY_HOLD_ENABLED,       LB_T_BOOL,  LB_RW | LB_PERSIST, LB_NUM(1)},
-    {LB_KEY_HOLD_THRESHOLD,     LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(500)},
-    {LB_KEY_HOLD_TICK_INTERVAL, LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(200)},
-    /* The key shorts to ground, so idle is a high level — hence Invert. */
-    {LB_KEY_INVERT,             LB_T_BOOL,  LB_RW | LB_PERSIST, LB_NUM(1)},
+    LB_KEY_ATTR_PRESS_COUNT(),
+    LB_KEY_ATTR_EVENT_MODE(),
+    LB_KEY_ATTR_MULTI_CLICK_WINDOW(350),
+    LB_KEY_ATTR_MAX_CLICKS(3),
 };
 
 static lb_endpoint_t endpoints[] = {{
     .number = EP_KEY,
     .type_id = LB_TYPE_KEYINPUT,
     .revision = 1,
-    .features = 0,
+    .features = LB_KEY_F_MULTICLICK,
     .channel = 1,
     .attrs = attributes,
     .attr_count = sizeof attributes / sizeof attributes[0],
+    .on_check = lb_key_check,
+    .feature_of = lb_key_feature_of,
 }};
+
+/* The rest of the key's timings. With no HOLD feature the hold values are never used;
+ * the multi-click ones apply only if the attributes above were removed. */
+static const lb_key_config_t key_config = LB_KEY_CONFIG_DEFAULT;
+
+/** The finger is on the key. The key shorts to ground: a LOW pin is a press. */
+static bool key_pressed(void)
+{
+    return gpio_get_level(CONFIG_LAGUN_KEY_GPIO) == 0;
+}
 
 
 /** Print a frame with its meaning, not just its bytes.
@@ -80,6 +98,7 @@ static lb_transport_t bus;
 static lb_platform_t  platform_impl;
 static lb_node_t      node;
 static lb_key_t       key_sm;
+static lb_debounce_t  debounce;
 
 void app_main(void)
 {
@@ -126,35 +145,28 @@ void app_main(void)
     /* The initial state comes from the pin, so that starting with the key held down
      * does not look like a press. */
     uint32_t now = platform_impl.millis(platform_impl.ctx);
-    lb_key_init(&key_sm, &endpoints[0], gpio_get_level(CONFIG_LAGUN_KEY_GPIO) != 0,
-                now);
+    lb_debounce_init(&debounce, key_pressed(), now);
+    lb_key_init(&key_sm, &endpoints[0], &key_config, key_pressed(), now);
 
     uint16_t prev_address = node.address;
-    bool     prev_state = key_sm.stable;
-    bool     prev_hold = false;
+    bool     prev_state = key_sm.pressed;
     uint16_t attempts_made = 0;
 
     while (true) {
         lb_esp_bus_tick(&bus);
         lb_node_tick(&node);
 
-        /* 2 ms. Contact bounce lasts single milliseconds, and DebounceTime has
-         * the lower bound of 5 ms — polling the pin any less often, and we would start
-         * losing short presses. */
-        lb_key_update(&key_sm, &node,
-                      gpio_get_level(CONFIG_LAGUN_KEY_GPIO) != 0,
-                      platform_impl.millis(platform_impl.ctx));
+        /* 2 ms: well inside the 15 ms bounce window, so a short press is never lost. */
+        now = platform_impl.millis(platform_impl.ctx);
+        bool pressed = lb_debounce_update(&debounce, key_pressed(), now, DEBOUNCE_MS);
+        lb_key_update(&key_sm, &node, pressed, now);
 
         /* Everything below is printed ONLY ON CHANGE. A log that says the same thing
          * every second stops being read after five minutes — and then it also stops
          * showing what matters. */
-        if (key_sm.stable != prev_state) {
-            prev_state = key_sm.stable;
+        if (key_sm.pressed != prev_state) {
+            prev_state = key_sm.pressed;
             ESP_LOGI(TAG, "key %s", prev_state ? "PRESSED" : "released");
-        }
-        if (key_sm.hold_active != prev_hold) {
-            prev_hold = key_sm.hold_active;
-            ESP_LOGI(TAG, "hold %s", prev_hold ? "started" : "ended");
         }
         if (node.address != prev_address) {
             prev_address = node.address;

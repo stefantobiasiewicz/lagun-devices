@@ -19,7 +19,7 @@ config LAGUN_KEY_GPIO
     default 3
     help
         A key shorting to ground, with the internal pull-up. The resting state is
-        then high, so `Invert` in the endpoint's attributes is on.
+        then high, and main.c reads a LOW pin as a press.
 
 config LAGUN_BITRATE
     int "Bus speed [bit/s]"

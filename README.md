@@ -205,7 +205,8 @@ GPIO wybiera się w `idf.py menuconfig` → *LagunBus*; powyższe to wartości d
 GPIO8 jest wyjątkiem w jedną stronę: siedzi tam dioda i **po starcie** wolno nią sterować.
 
 **Klawisz:** `GPIO3` — przycisk do `GND`, podciąganie wewnętrzne włączone programowo.
-Spoczynek to stan wysoki, więc endpoint ma `Invert = true`.
+Spoczynek to stan wysoki, więc `main.c` czyta stan niski jako naciśnięcie. Polaryzacja
+to sprawa budowy urządzenia, nie atrybut — typ `KeyInput` nie ma już `Invert`.
 
 **Wyjście:** `GPIO10` — wejście `IN` modułu przekaźnikowego. Typowy moduł załącza się
 stanem **niskim** — stąd `Invert = true`. Pomyłka objawia się przekaźnikiem załączonym
