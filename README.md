@@ -219,7 +219,7 @@ restartuje.
 ### Service button and status LED — every device has them
 
 A requirement of the specification (`lagunbus-spec/types/0x0001-device.md` §5.4,
-`zadania/CR-05.md`): a **service button** for a local factory reset and a **status LED**
+`zadania/zrobione/CR-05.md`): a **service button** for a local factory reset and a **status LED**
 showing what the node is doing, both reachable with the module mounted and independent
 of its function. The logic is the library's (`tools/service.h`, `tools/led.h`, tested on
 a computer); the pins are the port's `lb_esp_status_t`, the same in every application.

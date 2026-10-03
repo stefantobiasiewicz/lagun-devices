@@ -47,7 +47,7 @@ esp_err_t lb_esp_bus_init(lb_transport_t *out, const lb_esp_bus_cfg_t *cfg);
  */
 void lb_esp_bus_tick(lb_transport_t *bus);
 
-/** The service button and the status LED every device has (zadania/CR-05.md,
+/** The service button and the status LED every device has (zadania/zrobione/CR-05.md,
  * types/0x0001-device.md §5.4).
  *
  * The same in every application, so it lives here once: the button debounced and fed to

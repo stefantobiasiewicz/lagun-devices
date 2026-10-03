@@ -70,7 +70,7 @@ static void esp_restart_node(void *ctx)
  * A panic goes in as WATCHDOG: the specification has two values that mean a fault —
  * WATCHDOG for "the firmware hung" and BROWNOUT for the supply — and a crash is the
  * firmware's fault as much as a hang is; UNKNOWN would hide it. Until 2026-10-03 the node
- * did not ask and always said POWER_ON (zadania/CR-05.md). */
+ * did not ask and always said POWER_ON (zadania/zrobione/CR-05.md). */
 static uint8_t esp_reset_reason_node(void *ctx)
 {
     (void)ctx;

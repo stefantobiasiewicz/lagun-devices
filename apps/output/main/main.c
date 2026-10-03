@@ -97,7 +97,7 @@ static void drive_output(void *ctx, bool level)
      * working relay, only inverted. */
     ESP_LOGI(TAG, "output %s (GPIO%d = %d)", on ? "ON" : "off",
              CONFIG_LAGUN_RELAY_GPIO, level ? 1 : 0);
-    /* The on-board LED used to mirror the relay here. Since zadania/CR-05.md it is the
+    /* The on-board LED used to mirror the relay here. Since zadania/zrobione/CR-05.md it is the
      * status LED; a relay module has its own LED for the relay. */
 }
 
