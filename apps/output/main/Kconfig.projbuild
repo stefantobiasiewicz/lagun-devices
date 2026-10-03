@@ -22,12 +22,28 @@ config LAGUN_RELAY_GPIO
         attributes. Check yours — the mistake shows as a relay switched on the
         whole time except for the moment it is meant to be on.
 
-config LAGUN_LED_GPIO
-    int "On-board LED GPIO (-1 = none)"
+config LAGUN_SERVICE_GPIO
+    int "Service button GPIO"
+    default 9
+    help
+        The service button: held 5 s and let go, a factory reset by the device itself
+        (devices/README.md). 9 by default — BOOT on the Super Mini, wired to ground; an
+        external button goes from GPIO9 to GND next to it. Held at power-on it enters
+        the download mode instead, which harms nothing: let go and power up again.
+
+config LAGUN_STATUS_LED_GPIO
+    int "Status LED GPIO"
     default 8
     help
-        On the Super Mini the LED sits on GPIO8 and lights on a low level. It is a
-        boot-mode strapping pin, but after boot it may be used as an output.
+        The status LED: what the node is doing (devices/README.md). 8 by default — the
+        on-board LED of the Super Mini; an external one goes from 3V3 through a resistor
+        to GPIO8. GPIO8 is a strapping pin and must not be pulled to ground at reset.
+
+config LAGUN_STATUS_LED_ACTIVE_LOW
+    bool "Status LED lights on a LOW level"
+    default y
+    help
+        Yes for the Super Mini's on-board LED and for an external one wired from 3V3.
 
 config LAGUN_BITRATE
     int "Bus speed [bit/s]"

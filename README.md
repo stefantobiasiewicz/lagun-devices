@@ -203,6 +203,8 @@ GPIO wybiera się w `idf.py menuconfig` → *LagunBus*; powyższe to wartości d
 | GPIO20, GPIO21 | UART0 |
 
 GPIO8 jest wyjątkiem w jedną stronę: siedzi tam dioda i **po starcie** wolno nią sterować.
+GPIO9 (przycisk BOOT) tak samo — po starcie to zwykłe wejście. Oba są dziś przyciskiem
+serwisowym i diodą stanu (niżej).
 
 **Klawisz:** `GPIO3` — przycisk do `GND`, podciąganie wewnętrzne włączone programowo.
 Spoczynek to stan wysoki, więc `main.c` czyta stan niski jako naciśnięcie. Polaryzacja
@@ -213,6 +215,50 @@ stanem **niskim** — stąd `Invert = true`. Pomyłka objawia się przekaźnikie
 przez cały czas poza chwilą, gdy ma być załączony. Przekaźnik zasilaj **osobno**, nie
 z 3V3 płytki — cewka przy przełączaniu potrafi ściągnąć zasilanie tak, że procesor się
 restartuje.
+
+### Service button and status LED — every device has them
+
+A requirement of the specification (`lagunbus-spec/types/0x0001-device.md` §5.4,
+`zadania/CR-05.md`): a **service button** for a local factory reset and a **status LED**
+showing what the node is doing, both reachable with the module mounted and independent
+of its function. The logic is the library's (`tools/service.h`, `tools/led.h`, tested on
+a computer); the pins are the port's `lb_esp_status_t`, the same in every application.
+
+```
+ESP32-C3 Super Mini
+───────────────────
+GPIO9  ──o  o── GND        service button — BOOT on the board; an external one in parallel
+GPIO8  ──|◀──[330Ω]── 3V3  status LED — on the board; an external one lit by the same LOW
+```
+
+Both are strapping pins and both are on the header. GPIO9 held at power-on enters the
+download mode — nothing breaks, let go and power up again. GPIO8 must not be pulled to
+ground at reset, which is why an external LED goes **from 3V3**, not to GND. Pins in
+`idf.py menuconfig` → *LagunBus* (`LAGUN_SERVICE_GPIO`, `LAGUN_STATUS_LED_GPIO`,
+`LAGUN_STATUS_LED_ACTIVE_LOW`); a target board may move them.
+
+**The button — the project's rule** (a guideline, not the specification's):
+
+- hold it **5 s**: the LED goes **dark** — "let go now";
+- **let go**: factory reset, the same as `FactoryReset` from the hub — the address is
+  forgotten, the node restarts and announces itself as a new device. Let go earlier and
+  nothing happens;
+- a button pressed at start-up does nothing until it has been seen released — a stuck
+  button cannot reset the node over and over.
+
+**The LED:**
+
+| what you see | state |
+|---|---|
+| lit, dark for a moment every 3 s | working — an address, `Booted` sent |
+| slow blink, 0.5 s on, 0.5 s off | no address — announcing; the hub needs joining open |
+| two short flashes every second | bus fault — error passive or bus-off; also a node alone on the cable |
+| fast blink | `Identify` — `i` in the hub's view, 5 s |
+| dark | a reset on its way — or the button held past 5 s — or no power |
+
+Several at once show one, by a fixed priority: reset, identify, bus fault, no address,
+working. In `apps/output` the on-board LED used to mirror the relay; it is
+the status LED now — a relay module has its own LED for the relay.
 
 ### Magistrala
 

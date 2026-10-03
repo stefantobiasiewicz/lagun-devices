@@ -97,6 +97,15 @@ static void on_frame_seen(void *ctx, const lb_frame_t *frame, bool outgoing)
 static lb_transport_t bus;
 static lb_platform_t  platform_impl;
 static lb_node_t      node;
+static lb_esp_status_t status;
+
+/* A Kconfig `bool` set to "no" leaves its macro undefined, so it cannot be passed on as
+ * it is. */
+#ifdef CONFIG_LAGUN_STATUS_LED_ACTIVE_LOW
+#define STATUS_LED_ACTIVE_LOW true
+#else
+#define STATUS_LED_ACTIVE_LOW false
+#endif
 static lb_key_t       key_sm;
 static lb_debounce_t  debounce;
 
@@ -132,6 +141,10 @@ void app_main(void)
 
     lb_node_init(&node, &bus, &platform_impl, &identity_cfg, endpoints, 1);
     node.on_frame = on_frame_seen;
+    /* Before lb_node_start: its first state report has to reach the LED. */
+    ESP_ERROR_CHECK(lb_esp_status_init(&status, &node, CONFIG_LAGUN_SERVICE_GPIO,
+                                       CONFIG_LAGUN_STATUS_LED_GPIO,
+                                       STATUS_LED_ACTIVE_LOW));
     lb_node_start(&node);
 
     ESP_LOGI(TAG, "ShortId 0x%08lX, key on GPIO%d",
@@ -160,6 +173,7 @@ void app_main(void)
         now = platform_impl.millis(platform_impl.ctx);
         bool pressed = lb_debounce_update(&debounce, key_pressed(), now, DEBOUNCE_MS);
         lb_key_update(&key_sm, &node, pressed, now);
+        lb_esp_status_tick(&status, now);
 
         /* Everything below is printed ONLY ON CHANGE. A log that says the same thing
          * every second stops being read after five minutes — and then it also stops

@@ -1,5 +1,6 @@
 #include "lb_esp32c3.h"
 
+#include "esp_idf_version.h"
 #include "esp_mac.h"
 #include "esp_random.h"
 #include "esp_system.h"
@@ -64,6 +65,33 @@ static void esp_restart_node(void *ctx)
     esp_restart();
 }
 
+/** `LastResetReason` from what the chip knows (types/0x0001-device.md §2.4).
+ *
+ * A panic goes in as WATCHDOG: the specification has two values that mean a fault —
+ * WATCHDOG for "the firmware hung" and BROWNOUT for the supply — and a crash is the
+ * firmware's fault as much as a hang is; UNKNOWN would hide it. Until 2026-10-03 the node
+ * did not ask and always said POWER_ON (zadania/CR-05.md). */
+static uint8_t esp_reset_reason_node(void *ctx)
+{
+    (void)ctx;
+    switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return LB_RESET_POWER_ON;
+    case ESP_RST_EXT:
+    case ESP_RST_SDIO:     return LB_RESET_EXTERNAL;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
+    case ESP_RST_USB:      /* the USB Serial/JTAG reset — flashing, monitor.sh */
+    case ESP_RST_JTAG:     return LB_RESET_EXTERNAL;
+#endif
+    case ESP_RST_SW:       return LB_RESET_SOFTWARE;
+    case ESP_RST_PANIC:
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:      return LB_RESET_WATCHDOG;
+    case ESP_RST_BROWNOUT: return LB_RESET_BROWNOUT;
+    default:               return LB_RESET_UNKNOWN;
+    }
+}
+
 esp_err_t lb_esp_platform_init(lb_platform_t *out)
 {
     esp_err_t err = nvs_flash_init();
@@ -83,6 +111,7 @@ esp_err_t lb_esp_platform_init(lb_platform_t *out)
     out->load = esp_load;
     out->random = esp_rand;
     out->restart = esp_restart_node;
+    out->reset_reason = esp_reset_reason_node;
     out->ctx = NULL;
     return ESP_OK;
 }

@@ -10,7 +10,11 @@
 #ifndef LB_ESP32C3_H
 #define LB_ESP32C3_H
 
+#include "lagunbus/node.h"
 #include "lagunbus/platform.h"
+#include "lagunbus/tools/debounce.h"
+#include "lagunbus/tools/led.h"
+#include "lagunbus/tools/service.h"
 #include "lagunbus/transport.h"
 
 #include "driver/gpio.h"
@@ -42,6 +46,37 @@ esp_err_t lb_esp_bus_init(lb_transport_t *out, const lb_esp_bus_cfg_t *cfg);
  * a moment without communication.
  */
 void lb_esp_bus_tick(lb_transport_t *bus);
+
+/** The service button and the status LED every device has (zadania/CR-05.md,
+ * types/0x0001-device.md §5.4).
+ *
+ * The same in every application, so it lives here once: the button debounced and fed to
+ * `lb_service_t` (held 5 s, reset on the release, armed once seen released), the LED
+ * driven by `lb_led_t` from the node's state. What is the library's (the patterns, the
+ * hold rule) is tested on a computer; this is only the pins.
+ */
+typedef struct {
+    lb_node_t     *node;
+    gpio_num_t     button_gpio;
+    gpio_num_t     led_gpio;
+    bool           led_active_low;
+    lb_debounce_t  debounce;
+    lb_service_t   service;
+    lb_led_t       led;
+} lb_esp_status_t;
+
+/** Set up both pins and become the node's `on_state`. Call BEFORE `lb_node_start`, so
+ * the first state report reaches the LED.
+ *
+ * On the Super Mini: the BOOT button on GPIO9 (to ground) and the on-board LED on GPIO8
+ * (lights LOW). Both are strapping pins and both are on the header — an external button
+ * goes from GPIO9 to GND next to BOOT, an external LED from 3V3 through a resistor to
+ * GPIO8, lit by the same LOW level (devices/README.md). */
+esp_err_t lb_esp_status_init(lb_esp_status_t *s, lb_node_t *node, gpio_num_t button_gpio,
+                             gpio_num_t led_gpio, bool led_active_low);
+
+/** Every turn of the loop: read the button, act on it, blink the LED. */
+void lb_esp_status_tick(lb_esp_status_t *s, uint32_t now_ms);
 
 /** `esp_timer` clock, persistence in NVS, randomness from `esp_random()`.
  *

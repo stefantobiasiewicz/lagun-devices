@@ -2,7 +2,8 @@
  *
  * `PowerOnBehaviour`, `AutoOffTime` and `MinGap`-limited reports live in the library
  * (lib/lagunbus-node, `lagunbus/types/output.h`) and are tested on a computer against
- * `vectors/scenarios/output.json`. What is left here is the relay pin and the LED.
+ * `vectors/scenarios/output.json`. What is left here is the relay pin; the service
+ * button and the status LED are the port's (`lb_esp_status_t`).
  */
 #include "lagunbus/types/output.h"
 #include "lagunbus/registry.h"
@@ -74,6 +75,15 @@ static void on_frame_seen(void *ctx, const lb_frame_t *frame, bool outgoing)
 static lb_transport_t bus;
 static lb_platform_t  platform_impl;
 static lb_node_t      node;
+static lb_esp_status_t status;
+
+/* A Kconfig `bool` set to "no" leaves its macro undefined, so it cannot be passed on as
+ * it is. */
+#ifdef CONFIG_LAGUN_STATUS_LED_ACTIVE_LOW
+#define STATUS_LED_ACTIVE_LOW true
+#else
+#define STATUS_LED_ACTIVE_LOW false
+#endif
 static lb_output_t    output_ep;
 
 /** The only place that touches hardware. `level` already has `Invert` applied. */
@@ -87,13 +97,8 @@ static void drive_output(void *ctx, bool level)
      * working relay, only inverted. */
     ESP_LOGI(TAG, "output %s (GPIO%d = %d)", on ? "ON" : "off",
              CONFIG_LAGUN_RELAY_GPIO, level ? 1 : 0);
-#if CONFIG_LAGUN_LED_GPIO >= 0
-    /* The LED on the Super Mini lights on a low level, so the other way round from the
-     * relay once its own Invert is taken into account. It shows the output's LOGICAL
-     * state. */
-    bool on_state = lb_endpoint_attr(&endpoints[0], LB_OUT_ON_OFF)->value.value != 0;
-    gpio_set_level(CONFIG_LAGUN_LED_GPIO, on_state ? 0 : 1);
-#endif
+    /* The on-board LED used to mirror the relay here. Since zadania/CR-05.md it is the
+     * status LED; a relay module has its own LED for the relay. */
 }
 
 static uint8_t handle_command(lb_endpoint_t *self, uint8_t element, const uint8_t *args,
@@ -120,9 +125,6 @@ void app_main(void)
     ESP_ERROR_CHECK(lb_esp_uid(identity_cfg.uid));
 
     uint64_t pins = 1ULL << CONFIG_LAGUN_RELAY_GPIO;
-#if CONFIG_LAGUN_LED_GPIO >= 0
-    pins |= 1ULL << CONFIG_LAGUN_LED_GPIO;
-#endif
     gpio_config_t out_ep = {
         .pin_bit_mask = pins,
         .mode = GPIO_MODE_OUTPUT,
@@ -143,6 +145,10 @@ void app_main(void)
 
     lb_node_init(&node, &bus, &platform_impl, &identity_cfg, endpoints, 1);
     node.on_frame = on_frame_seen;
+    /* Before lb_node_start: its first state report has to reach the LED. */
+    ESP_ERROR_CHECK(lb_esp_status_init(&status, &node, CONFIG_LAGUN_SERVICE_GPIO,
+                                       CONFIG_LAGUN_STATUS_LED_GPIO,
+                                       STATUS_LED_ACTIVE_LOW));
     lb_node_start(&node);
 
     /* AFTER lb_node_start, because RESTORE reads the state from the persistent store,
@@ -162,7 +168,9 @@ void app_main(void)
     while (true) {
         lb_esp_bus_tick(&bus);
         lb_node_tick(&node);
-        lb_output_tick(&output_ep, platform_impl.millis(platform_impl.ctx));
+        uint32_t now = platform_impl.millis(platform_impl.ctx);
+        lb_output_tick(&output_ep, now);
+        lb_esp_status_tick(&status, now);
 
         if (node.address != prev_address) {
             prev_address = node.address;
