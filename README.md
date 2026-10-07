@@ -1,6 +1,7 @@
 # Węzły LagunBus
 
-Oprogramowanie urządzeń fizycznych: **klawisz** i **wyjście**, na ESP32-C3 Super Mini
+Oprogramowanie urządzeń fizycznych — **klawisz** i **wyjście**, a od FEAT-09 **trzy
+klawisze** (`key3`) i **osiem wyjść na MCP23017** (`out8`) — na ESP32-C3 Super Mini
 z zewnętrznym nadajnikiem CAN.
 
 The protocol itself is **not here**. The node library — C for this firmware, Python for
@@ -34,7 +35,7 @@ git submodule update --init          # once after cloning: fills lib/lagunbus-no
             │
             ▼
   ports/esp32c3/                    TWAI + NVS + esp_timer + Uid from eFuse
-  apps/key, apps/output             read a pin, drive a relay
+  apps/key, key3, output, out8      read pins, drive outputs
 ```
 
 Both applications point `EXTRA_COMPONENT_DIRS` at `lib/lagunbus-node/c/lagunbus` and at
@@ -82,9 +83,13 @@ devices/
 ├── lib/lagunbus-node/          SUBMODULE — the node library (C + Python)
 ├── ports/
 │   └── esp32c3/                TWAI + NVS + esp_timer + Uid z eFuse
+├── components/
+│   └── mcp23017/               ekspander I²C — rejestry, nie endpointy (apps/out8)
 ├── apps/
 │   ├── key/                    klawisz
-│   └── output/                 wyjście (przekaźnik)
+│   ├── key3/                   trzy klawisze (zadania/zrobione/FEAT-09.md)
+│   ├── output/                 wyjście (przekaźnik)
+│   └── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
 ├── tools/                      flash.sh, monitor.sh
 └── .devcontainer/              ESP-IDF v5.3.1 w kontenerze
 ```
@@ -168,6 +173,9 @@ and says how many (`[log: N lines dropped]`). Logging less was rejected — the 
 is the window onto a bring-up, and any single line can wait. Details in
 [`ports/esp32c3/log.c`](ports/esp32c3/log.c).
 
+For the same reason the MCP23017 write in `out8` gives up after 10 ms, not 100 ms: it
+also runs on the way to the answer.
+
 ### Co z tego wynika dla huba
 
 Nic. Węzeł fizyczny wygląda dla huba dokładnie tak, jak atrapa w jego testach, bo obie
@@ -209,6 +217,11 @@ GND    ──────────────────────  GND
 ```
 
 GPIO wybiera się w `idf.py menuconfig` → *LagunBus*; powyższe to wartości domyślne.
+
+**Pin-to-pin wiring of each device** — every connection, power and transceiver included —
+is in the application's own README: [`apps/key`](apps/key/README.md),
+[`apps/key3`](apps/key3/README.md), [`apps/output`](apps/output/README.md),
+[`apps/out8`](apps/out8/README.md).
 
 | Czego nie ruszać | Dlaczego |
 |---|---|
@@ -274,6 +287,72 @@ Several at once show one, by a fixed priority: reset, identify, bus fault, no ad
 working. In `apps/output` the on-board LED used to mirror the relay; it is
 the status LED now — a relay module has its own LED for the relay.
 
+### `key3` and `out8` — on a breadboard for now
+
+Two devices closer to what will hang in the installation (`zadania/zrobione/FEAT-09.md`). Built
+on a breadboard for the time being: the schematics show the connections, not the
+mounting — the service button and the status LED are the board's own (BOOT/GPIO9 and the
+LED on GPIO8), and `out8` drives LEDs, not relays yet. The CAN transceiver is wired as
+above (GPIO4/GPIO5) and left out of the drawings.
+
+**`key3`** — three keys, endpoints 4, 5, 6 (`KeyInput`, channels 1–3). Features `RAW` and
+`HOLD`, no multi-click: each key switches between `CLICK` and `RAW` on its own, and has
+its own hold. The library's copy is `key3` in `lib/lagunbus-node/c/sim/devices.c`.
+
+```
+ESP32-C3 Super Mini
+───────────────────
+GPIO6  ──o  o── GND        key 1 (endpoint 4)
+GPIO7  ──o  o── GND        key 2 (endpoint 5)
+GPIO10 ──o  o── GND        key 3 (endpoint 6)
+GPIO9 / GPIO8              service button / status LED — on the board
+```
+
+To ground, with the internal pull-up: a LOW pin is a press. Pins in `idf.py menuconfig`
+→ *LagunBus — key3*.
+
+**`out8`** — eight outputs, endpoints 4 … 11 (`Output`, channels 1–8), on port A of an
+MCP23017 over I²C (400 kHz, address 0x20). Each output an LED lit by a HIGH pin, so
+`Invert = 0`. The library's copy is `out8`.
+
+```
+ESP32-C3 Super Mini              MCP23017
+───────────────────              ────────────────────
+3V3   ───────────────┬─────────  VDD (9), RESET (18)     + 100 nF VDD–GND
+GND   ───────────────┼─────────  VSS (10), A0 A1 A2 (15–17)   → address 0x20
+GPIO6 ──────┬────────┼─────────  SDA (13)
+GPIO7 ──────┼──┬─────┼─────────  SCL (12)
+          [4k7][4k7] │
+            └──┴─────┘ 3V3       GPA0 (21) ──[330Ω]──▶|── GND    output 1 (endpoint 4)
+                                 GPA1 (22) ──[330Ω]──▶|── GND    output 2
+                                   …
+                                 GPA7 (28) ──[330Ω]──▶|── GND    output 8 (endpoint 11)
+GPIO9 / GPIO8                    service button / status LED — on the board
+```
+
+- **RESET to 3V3 for good.** A restart of the ESP32 alone does not reset the MCP23017, so
+  `out8` writes the registers in full before every start: the latch first (every output
+  off), then port A to outputs, then `PowerOnBehaviour`. After power-on the MCP23017's
+  pins are inputs — the LEDs stay dark until then.
+- **I²C is assumed to work.** A failed write is logged and nothing more.
+- **The chip is a component of its own**, `components/mcp23017/`: direction and latch of
+  either port, a pin or a whole port at a time. It knows registers, not endpoints; the
+  application creates the I²C bus and hands it in, so another chip can share it.
+- Pins and the address in `idf.py menuconfig` → *LagunBus — out8*.
+
+### Models — `DeviceType`
+
+`DeviceType` names the **model**, not the endpoint type (`lagunbus-spec/types/0x0001-device.md`
+§2.6), unique within `VendorId`. This project's devices have `VendorId 0`; a new one takes
+the next free number here:
+
+| `DeviceType` | application | what |
+|---|---|---|
+| `0x0010` | `apps/key` | one key, multi-click |
+| `0x0011` | `apps/key3` | three keys, click / raw, hold |
+| `0x0020` | `apps/output` | one relay on a GPIO |
+| `0x0021` | `apps/out8` | eight outputs on an MCP23017 |
+
 ### Magistrala
 
 - **500 kbit/s**, ta sama wartość u huba i u każdego węzła; ramki **rozszerzone** 29-bitowe,
@@ -302,7 +381,8 @@ python3 -m venv .venv && .venv/bin/pip install esptool esp-idf-monitor
 **Nie używaj `screen`.** Port szeregowy robi sam procesor (USB Serial/JTAG), więc przy
 każdym resecie urządzenie USB znika i wraca — razem z `/dev/cu.*`, które `screen` trzyma
 otwarte. Dziennika startowego nie widać wtedy nigdy. `tools/monitor.sh` czeka i podłącza
-się z powrotem. Dwie płytki to dwa przebiegi — `key` i `output` to osobne obrazy.
+się z powrotem. Dwie płytki to dwa przebiegi — każda aplikacja (`key`, `key3`, `output`,
+`out8`) to osobny obraz.
 
 ### Pierwsze uruchomienie
 
