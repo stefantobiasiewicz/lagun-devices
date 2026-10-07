@@ -111,6 +111,7 @@ static lb_debounce_t  debounce;
 
 void app_main(void)
 {
+    ESP_ERROR_CHECK(lb_esp_log_init());
     ESP_ERROR_CHECK(lb_esp_platform_init(&platform_impl));
 
     lb_identity_t identity_cfg = {

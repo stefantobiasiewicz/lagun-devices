@@ -154,6 +154,20 @@ Most szeregowy `rfc2217` rozważony i odrzucony: jedna ruchoma część więcej 
 w którym i tak będzie się szukać usterek sprzętowych. The native build lives in
 `lagunbus-node` and needs no container at all — and that is where most things get settled.
 
+### The log never makes the node wait (2026-10-06)
+
+The console is USB Serial/JTAG, and a write to it waits when its 64-byte FIFO is full —
+up to 50 ms when nobody reads the port. The node logs on the way to its answer, so one
+command could hold the `RESPONSE` past the hub's 100 ms; the hub then repeats it, and
+until the library deduplicates commands (`zadania/BUG-02.md`) a `Toggle` runs twice. Seen
+on `out8`: a response after 108 ms.
+
+Every application therefore calls `lb_esp_log_init()` first: `ESP_LOGx` only puts the
+line in a ring buffer, and a task of its own writes it to USB. A full buffer drops lines
+and says how many (`[log: N lines dropped]`). Logging less was rejected — the frame log
+is the window onto a bring-up, and any single line can wait. Details in
+[`ports/esp32c3/log.c`](ports/esp32c3/log.c).
+
 ### Co z tego wynika dla huba
 
 Nic. Węzeł fizyczny wygląda dla huba dokładnie tak, jak atrapa w jego testach, bo obie

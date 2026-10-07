@@ -112,6 +112,7 @@ static uint8_t handle_command(lb_endpoint_t *self, uint8_t element, const uint8_
 
 void app_main(void)
 {
+    ESP_ERROR_CHECK(lb_esp_log_init());
     ESP_ERROR_CHECK(lb_esp_platform_init(&platform_impl));
 
     lb_identity_t identity_cfg = {

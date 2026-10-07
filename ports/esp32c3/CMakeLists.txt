@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "transport.c" "platform.c" "status.c"
+    SRCS "transport.c" "platform.c" "status.c" "log.c"
     INCLUDE_DIRS "include"
-    REQUIRES lagunbus driver esp_timer nvs_flash esp_hw_support
+    REQUIRES lagunbus driver esp_timer nvs_flash esp_hw_support esp_ringbuf log
 )
