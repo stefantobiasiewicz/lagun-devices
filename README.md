@@ -296,7 +296,7 @@ idf.py build
 # na macOS — narzędzia zakłada się raz
 python3 -m venv .venv && .venv/bin/pip install esptool esp-idf-monitor
 ./tools/flash.sh output
-./tools/monitor.sh output            # dziennik; wyjście: Ctrl-]
+./tools/monitor.sh output            # dziennik; wyjście: Ctrl-C
 ```
 
 **Nie używaj `screen`.** Port szeregowy robi sam procesor (USB Serial/JTAG), więc przy

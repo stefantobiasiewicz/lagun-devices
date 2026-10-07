@@ -34,9 +34,9 @@ if [ -z "$PORT" ]; then
     [ -z "$PORT" ] && { echo "no port in sight — is the board plugged in?" >&2; exit 1; }
 fi
 
-echo "$PORT — $APP;  quit: Ctrl-]"
+echo "$PORT — $APP;  quit: Ctrl-C"
 # --target is needed because without it the monitor reaches for the Xtensa tools and,
 # at the first address it has to decode, says "xtensa-esp32-elf-addr2line: No such
-# file". An ESP32-C3 is RISC-V.
-exec "$ROOT/.venv/bin/idf-monitor" --port "$PORT" --baud 115200 \
+# file". An ESP32-C3 is RISC-V. The config file makes Ctrl-C quit (why: monitor.cfg).
+ESP_IDF_MONITOR_CFGFILE="$ROOT/tools/monitor.cfg" exec "$ROOT/.venv/bin/idf-monitor" --port "$PORT" --baud 115200 \
      --target esp32c3 "$ELF"
