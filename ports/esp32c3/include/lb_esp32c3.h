@@ -78,7 +78,7 @@ esp_err_t lb_esp_status_init(lb_esp_status_t *s, lb_node_t *node, gpio_num_t but
 /** Every turn of the loop: read the button, act on it, blink the LED. */
 void lb_esp_status_tick(lb_esp_status_t *s, uint32_t now_ms);
 
-/** Logging that never makes the node loop wait (zadania/BUG-02.md): `ESP_LOGx` puts the
+/** Logging that never makes the node loop wait (zadania/zrobione/BUG-02.md): `ESP_LOGx` puts the
  * line in a ring buffer and a task of its own writes it to USB. Call it FIRST in
  * `app_main` — everything logged before goes the old, waiting way. */
 esp_err_t lb_esp_log_init(void);

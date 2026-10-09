@@ -8,7 +8,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-/* Why the log goes through a queue (zadania/BUG-02.md).
+/* Why the log goes through a queue (zadania/zrobione/BUG-02.md).
  *
  * The console is USB Serial/JTAG, and a write to it WAITS when its 64-byte FIFO is full:
  * up to 50 ms when nobody reads the port, longer behind a slow reader. The node loop

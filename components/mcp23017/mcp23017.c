@@ -8,7 +8,7 @@
 /** A two-byte write at 400 kHz takes ~60 µs; 10 ms is plenty. Not more: the write runs
  * on the way to the node's answer, and a chip that does not answer would hold that
  * answer for the whole timeout — at 100 ms, exactly the hub's own, after which it repeats
- * the command (zadania/BUG-02.md). */
+ * the command (zadania/zrobione/BUG-02.md). */
 #define TIMEOUT_MS 10
 
 static esp_err_t write_reg(mcp23017_t *m, uint8_t reg, uint8_t value)

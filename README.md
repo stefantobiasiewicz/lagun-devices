@@ -164,8 +164,9 @@ w którym i tak będzie się szukać usterek sprzętowych. The native build live
 The console is USB Serial/JTAG, and a write to it waits when its 64-byte FIFO is full —
 up to 50 ms when nobody reads the port. The node logs on the way to its answer, so one
 command could hold the `RESPONSE` past the hub's 100 ms; the hub then repeats it, and
-until the library deduplicates commands (`zadania/BUG-02.md`) a `Toggle` runs twice. Seen
-on `out8`: a response after 108 ms.
+before the library deduplicated commands (`zadania/zrobione/BUG-02.md`, in a firmware only once
+the `lib/lagunbus-node` pointer has moved past it) a `Toggle` ran twice. Seen on `out8`:
+a response after 108 ms.
 
 Every application therefore calls `lb_esp_log_init()` first: `ESP_LOGx` only puts the
 line in a ring buffer, and a task of its own writes it to USB. A full buffer drops lines
