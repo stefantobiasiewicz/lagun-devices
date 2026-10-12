@@ -23,8 +23,9 @@ static const char *TAG = "output";
 static lb_attr_t attributes[] = {
     {LB_OUT_ON_OFF,             LB_T_BOOL,  LB_RO,              LB_NUM(0)},
     {LB_OUT_POWER_ON_BEHAVIOUR, LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(LB_POWER_ON_OFF)},
-    /* A typical relay module switches on with a LOW level. Check yours. */
-    {LB_OUT_INVERT,             LB_T_BOOL,  LB_RW | LB_PERSIST, LB_NUM(1)},
+    /* No `Invert`: the relay module has one output contact and its LOW-active drive is
+     * build — `LAGUN_RELAY_ACTIVE_LOW` below, not an attribute the hub could overwrite
+     * (types/0x0020-output.md §5.6). */
     {LB_OUT_AUTO_OFF_TIME,      LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(0)},
     {LB_OUT_PURPOSE,            LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(1)}, /* Light */
     /* Without this, a held-down key toggling the output would flood the bus
@@ -84,19 +85,26 @@ static lb_esp_status_t status;
 #else
 #define STATUS_LED_ACTIVE_LOW false
 #endif
+#ifdef CONFIG_LAGUN_RELAY_ACTIVE_LOW
+#define RELAY_ACTIVE_LOW true
+#else
+#define RELAY_ACTIVE_LOW false
+#endif
 static lb_output_t    output_ep;
 
-/** The only place that touches hardware. `level` already has `Invert` applied. */
-static void drive_output(void *ctx, bool level)
+/** The only place that touches hardware. `coil` is the state of the relay coil; the
+ * board's polarity is applied here and nowhere else. */
+static void drive_output(void *ctx, bool coil)
 {
     (void)ctx;
-    gpio_set_level(CONFIG_LAGUN_RELAY_GPIO, level ? 1 : 0);
+    int pin = (coil != RELAY_ACTIVE_LOW) ? 1 : 0;
+    gpio_set_level(CONFIG_LAGUN_RELAY_GPIO, (uint32_t)pin);
     bool on = lb_endpoint_attr(&endpoints[0], LB_OUT_ON_OFF)->value.value != 0;
     /* We print both the logical state and the pin level. A mismatch between them means
-     * a badly set `Invert` — a fault that everywhere else looks like a perfectly
-     * working relay, only inverted. */
+     * a wrong `LAGUN_RELAY_ACTIVE_LOW` — a fault that everywhere else looks like a
+     * perfectly working relay, only inverted. */
     ESP_LOGI(TAG, "output %s (GPIO%d = %d)", on ? "ON" : "off",
-             CONFIG_LAGUN_RELAY_GPIO, level ? 1 : 0);
+             CONFIG_LAGUN_RELAY_GPIO, pin);
     /* The on-board LED used to mirror the relay here. Since zadania/zrobione/CR-05.md it is the
      * status LED; a relay module has its own LED for the relay. */
 }

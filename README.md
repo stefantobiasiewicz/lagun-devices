@@ -239,7 +239,8 @@ Spoczynek to stan wysoki, więc `main.c` czyta stan niski jako naciśnięcie. Po
 to sprawa budowy urządzenia, nie atrybut — typ `KeyInput` nie ma już `Invert`.
 
 **Wyjście:** `GPIO10` — wejście `IN` modułu przekaźnikowego. Typowy moduł załącza się
-stanem **niskim** — stąd `Invert = true`. Pomyłka objawia się przekaźnikiem załączonym
+stanem **niskim** — stąd `LAGUN_RELAY_ACTIVE_LOW = y` w `menuconfig`; od CR-04 to nastawa
+budowy, a nie atrybut `Invert`, który hub mógłby nadpisać. Pomyłka objawia się przekaźnikiem załączonym
 przez cały czas poza chwilą, gdy ma być załączony. Przekaźnik zasilaj **osobno**, nie
 z 3V3 płytki — cewka przy przełączaniu potrafi ściągnąć zasilanie tak, że procesor się
 restartuje.
@@ -313,8 +314,8 @@ To ground, with the internal pull-up: a LOW pin is a press. Pins in `idf.py menu
 → *LagunBus — key3*.
 
 **`out8`** — eight outputs, endpoints 4 … 11 (`Output`, channels 1–8), on port A of an
-MCP23017 over I²C (400 kHz, address 0x20). Each output an LED lit by a HIGH pin, so
-`Invert = 0`. The library's copy is `out8`.
+MCP23017 over I²C (400 kHz, address 0x20). Each output an LED lit by a HIGH pin; no
+`Invert`. The library's copy is `out8`.
 
 ```
 ESP32-C3 Super Mini              MCP23017

@@ -2,7 +2,7 @@
 
 ESP32-C3 Super Mini + SN65HVD230 CAN transceiver + MCP23017 I²C port expander with eight
 LEDs on port A, on a breadboard for now (`zadania/zrobione/FEAT-09.md`; relays later).
-`DeviceType` 0x0021, endpoints 4 … 11 (`Output`, `Invert = 0`). Pins and the address are
+`DeviceType` 0x0021, endpoints 4 … 11 (`Output`, no `Invert`). Pins and the address are
 the defaults of `idf.py menuconfig` → *LagunBus — out8*; power and the general rules are
 in [`../../README.md`](../../README.md) § Sprzęt. The chip's driver is
 [`components/mcp23017`](../../components/mcp23017/).
@@ -77,5 +77,5 @@ in [`../../README.md`](../../README.md) § Sprzęt. The chip's driver is
 | — | Super Mini `GPIO9` | service button: BOOT on the board |
 | — | Super Mini `GPIO8` | status LED: on the board |
 
-A LED lights on a HIGH pin, so `Invert = 0` on every output. 330 Ω from 3.3 V gives a
+A LED lights on a HIGH pin, which `main.c` applies as it is — no `Invert` (zadania/CR-04.md). 330 Ω from 3.3 V gives a
 few mA per LED — well inside the chip's 25 mA per pin.

@@ -1,8 +1,8 @@
 # `output` — one relay
 
 ESP32-C3 Super Mini + SN65HVD230 CAN transceiver + a one-channel relay module switched
-by a LOW level. `DeviceType` 0x0020, endpoint 4 (`Output`, `Invert = 1`). Pins are the
-defaults of `idf.py menuconfig` → *LagunBus — output*; power and the general rules are
+by a LOW level. `DeviceType` 0x0020, endpoint 4 (`Output`, no `Invert` — the LOW-active
+relay is `LAGUN_RELAY_ACTIVE_LOW`). Pins are the defaults of `idf.py menuconfig` → *LagunBus — output*; power and the general rules are
 in [`../../README.md`](../../README.md) § Sprzęt.
 
 ```
@@ -35,7 +35,7 @@ in [`../../README.md`](../../README.md) § Sprzęt.
 | Super Mini `GPIO5` | SN65HVD230 `RXD` / `R` | TWAI receive |
 | SN65HVD230 `CANH` | bus `CANH` | twisted pair |
 | SN65HVD230 `CANL` | bus `CANL` | twisted pair |
-| Super Mini `GPIO10` | relay module `IN` | LOW = on, hence `Invert = 1` |
+| Super Mini `GPIO10` | relay module `IN` | LOW = on, hence `LAGUN_RELAY_ACTIVE_LOW = y` |
 | Super Mini `GND` | relay module `GND` | common ground |
 | separate 5 V supply | relay module `VCC` | **not** the board's 3V3 — the coil can pull it down |
 | relay `COM` / `NO` | the load | |

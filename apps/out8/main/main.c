@@ -8,8 +8,8 @@
  *
  * The decisions (zadania/zrobione/FEAT-09.md):
  *
- *   - on a breadboard for now: LEDs straight from GPA0…GPA7, lit by a HIGH pin, so
- *     `Invert = 0` (N4). Relays later;
+ *   - on a breadboard for now: LEDs straight from GPA0…GPA7, lit by a HIGH pin
+ *     (N4); no `Invert` since zadania/CR-04.md (N7). Relays later;
  *   - I²C is assumed to work — no retries, no fault handling (N5);
  *   - the MCP23017's RESET is tied to 3V3, so a restart of the ESP32 alone does not reset
  *     it; the registers are written in full before every start instead (N6);
@@ -68,14 +68,14 @@ static void mcp_check(esp_err_t err, const char *what)
     {                                                                                      \
         {LB_OUT_ON_OFF,             LB_T_BOOL,  LB_RO,              LB_NUM(0)},            \
         {LB_OUT_POWER_ON_BEHAVIOUR, LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(LB_POWER_ON_OFF)}, \
-        /* An LED from the pin to ground lights on HIGH: no inversion (N4). */            \
-        {LB_OUT_INVERT,             LB_T_BOOL,  LB_RW | LB_PERSIST, LB_NUM(0)},            \
+        /* No `Invert`: an LED from the pin to ground lights on HIGH, and that is build, \
+         * not something for the hub to write (zadania/CR-04.md, N7). */                 \
         {LB_OUT_AUTO_OFF_TIME,      LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(0)},            \
         {LB_OUT_PURPOSE,            LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(1)}, /* Light */ \
         /* As apps/output: a held-down key toggling an output must not flood the bus. */  \
         {LB_COMMON_REPORTMINGAP,    LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(200)},          \
     }
-static lb_attr_t attributes[OUTPUT_COUNT][6] = {
+static lb_attr_t attributes[OUTPUT_COUNT][5] = {
     OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES,
     OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES,
 };
@@ -97,15 +97,16 @@ static lb_endpoint_t endpoints[OUTPUT_COUNT] = {
 
 static lb_output_t outputs[OUTPUT_COUNT];
 
-/** The only place that touches the outputs. `level` already has `Invert` applied; `ctx`
- * is the output's index, 0 … 7 = GPA0 … GPA7. */
+/** The only place that touches the outputs. `level` is the output's state — the LEDs
+ * light on HIGH, so it goes to the pin as it is; `ctx` is the output's index,
+ * 0 … 7 = GPA0 … GPA7. Relays driven LOW would invert it here. */
 static void drive_output(void *ctx, bool level)
 {
     int i = (int)(intptr_t)ctx;
     mcp_check(mcp23017_write_pin(&mcp, MCP23017_PORT_A, (uint8_t)i, level), "write");
     bool on = lb_endpoint_attr(&endpoints[i], LB_OUT_ON_OFF)->value.value != 0;
-    /* Both the logical state and the pin level: a mismatch means a badly set `Invert`
-     * (see apps/output). */
+    /* Both the logical state and the pin level: a mismatch means the board's polarity is
+     * wrong here (see apps/output). */
     ESP_LOGI(TAG, "output %d %s (GPA%d = %d)", i + 1, on ? "ON" : "off", i, level ? 1 : 0);
 }
 
@@ -127,13 +128,10 @@ static uint8_t handle_command(lb_endpoint_t *self, uint8_t element, const uint8_
  * `PowerOnBehaviour`. Written in full every time, never trusted to be as we left it. */
 static void outputs_off_then_enable(void)
 {
-    uint8_t off = 0;
-    for (int i = 0; i < OUTPUT_COUNT; i++) {
-        bool invert = lb_endpoint_attr(&endpoints[i], LB_OUT_INVERT)->value.value != 0;
-        if (invert) {
-            off |= (uint8_t)(1u << i);  /* inverted: off is a HIGH pin */
-        }
-    }
+    /* Every LED lights on HIGH, so off is LOW on all eight. The polarity is the board's,
+     * fixed here with `drive_output` — there is no `Invert` to read (zadania/CR-04.md,
+     * N7). Relays driven LOW would make this 0xFF. */
+    const uint8_t off = 0x00;
     mcp_check(mcp23017_write_port(&mcp, MCP23017_PORT_A, off), "latch");
     mcp_check(mcp23017_set_direction(&mcp, MCP23017_PORT_A, 0x00), "direction");
 }

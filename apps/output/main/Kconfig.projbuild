@@ -17,10 +17,15 @@ config LAGUN_TWAI_RX
 config LAGUN_RELAY_GPIO
     int "Relay GPIO"
     default 10
+
+config LAGUN_RELAY_ACTIVE_LOW
+    bool "Relay switches on a LOW level"
+    default y
     help
-        A relay module driven by a LOW level has `Invert` set in the endpoint's
-        attributes. Check yours — the mistake shows as a relay switched on the
-        whole time except for the moment it is meant to be on.
+        Yes for a typical relay module. This is the board's build, so it is set here and
+        not on the bus: the endpoint has no `Invert` (zadania/CR-04.md, N7). Check
+        yours — the mistake shows as a relay switched on the whole time except for the
+        moment it is meant to be on.
 
 config LAGUN_SERVICE_GPIO
     int "Service button GPIO"
