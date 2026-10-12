@@ -9,7 +9,7 @@
  * The decisions (zadania/zrobione/FEAT-09.md):
  *
  *   - on a breadboard for now: LEDs straight from GPA0…GPA7, lit by a HIGH pin
- *     (N4); no `Invert` since zadania/CR-04.md (N7). Relays later;
+ *     (N4); no `Invert` since zadania/zrobione/CR-04.md (N7). Relays later;
  *   - I²C is assumed to work — no retries, no fault handling (N5);
  *   - the MCP23017's RESET is tied to 3V3, so a restart of the ESP32 alone does not reset
  *     it; the registers are written in full before every start instead (N6);
@@ -69,7 +69,7 @@ static void mcp_check(esp_err_t err, const char *what)
         {LB_OUT_ON_OFF,             LB_T_BOOL,  LB_RO,              LB_NUM(0)},            \
         {LB_OUT_POWER_ON_BEHAVIOUR, LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(LB_POWER_ON_OFF)}, \
         /* No `Invert`: an LED from the pin to ground lights on HIGH, and that is build, \
-         * not something for the hub to write (zadania/CR-04.md, N7). */                 \
+         * not something for the hub to write (zadania/zrobione/CR-04.md, N7). */       \
         {LB_OUT_AUTO_OFF_TIME,      LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(0)},            \
         {LB_OUT_PURPOSE,            LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(1)}, /* Light */ \
         /* As apps/output: a held-down key toggling an output must not flood the bus. */  \
@@ -129,8 +129,8 @@ static uint8_t handle_command(lb_endpoint_t *self, uint8_t element, const uint8_
 static void outputs_off_then_enable(void)
 {
     /* Every LED lights on HIGH, so off is LOW on all eight. The polarity is the board's,
-     * fixed here with `drive_output` — there is no `Invert` to read (zadania/CR-04.md,
-     * N7). Relays driven LOW would make this 0xFF. */
+     * fixed here with `drive_output` — there is no `Invert` to read
+     * (zadania/zrobione/CR-04.md, N7). Relays driven LOW would make this 0xFF. */
     const uint8_t off = 0x00;
     mcp_check(mcp23017_write_port(&mcp, MCP23017_PORT_A, off), "latch");
     mcp_check(mcp23017_set_direction(&mcp, MCP23017_PORT_A, 0x00), "direction");

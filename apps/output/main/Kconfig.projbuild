@@ -23,7 +23,7 @@ config LAGUN_RELAY_ACTIVE_LOW
     default y
     help
         Yes for a typical relay module. This is the board's build, so it is set here and
-        not on the bus: the endpoint has no `Invert` (zadania/CR-04.md, N7). Check
+        not on the bus: the endpoint has no `Invert` (zadania/zrobione/CR-04.md, N7). Check
         yours — the mistake shows as a relay switched on the whole time except for the
         moment it is meant to be on.
 
