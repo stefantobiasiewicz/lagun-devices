@@ -1,0 +1,60 @@
+menu "LagunBus — env"
+
+config LAGUN_TWAI_TX
+    int "TWAI transmit GPIO"
+    default 4
+    help
+        4 and 5 by default, because on the ESP32-C3 Super Mini they are broken out
+        and play no other role. AVOID 2, 8 and 9 — those are boot-mode strapping
+        pins, and their state at reset decides whether the board starts at all.
+        Avoid 18 and 19 too: USB Serial/JTAG goes that way, that is, flashing and
+        the log.
+
+config LAGUN_TWAI_RX
+    int "TWAI receive GPIO"
+    default 5
+
+config LAGUN_I2C_SDA
+    int "I2C SDA GPIO (SHT40, VEML7700)"
+    default 6
+    help
+        SDA of both sensors on one bus. 6 and 7 by default: broken out on the Super
+        Mini, on the same side as the CAN RX, and no strapping role. Breakout modules
+        usually carry their own pull-ups; without them 4.7 kOhm to 3V3 on each line.
+
+config LAGUN_I2C_SCL
+    int "I2C SCL GPIO (SHT40, VEML7700)"
+    default 7
+
+config LAGUN_SERVICE_GPIO
+    int "Service button GPIO"
+    default 9
+    help
+        The service button: held 5 s and let go, a factory reset by the device itself
+        (devices/README.md). 9 by default — BOOT on the Super Mini, wired to ground; an
+        external button goes from GPIO9 to GND next to it. Held at power-on it enters
+        the download mode instead, which harms nothing: let go and power up again.
+
+config LAGUN_STATUS_LED_GPIO
+    int "Status LED GPIO"
+    default 8
+    help
+        The status LED: what the node is doing (devices/README.md). 8 by default — the
+        on-board LED of the Super Mini; an external one goes from 3V3 through a resistor
+        to GPIO8. GPIO8 is a strapping pin and must not be pulled to ground at reset.
+
+config LAGUN_STATUS_LED_ACTIVE_LOW
+    bool "Status LED lights on a LOW level"
+    default y
+    help
+        Yes for the Super Mini's on-board LED and for an external one wired from 3V3.
+        Keep the VEML7700 away from it, or the sensor measures its own blinking.
+
+config LAGUN_BITRATE
+    int "Bus speed [bit/s]"
+    default 500000
+    help
+        Has to agree with the hub and with EVERY other node. A node at a different
+        speed not only hears nobody — it corrupts frames for all the others.
+
+endmenu

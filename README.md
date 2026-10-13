@@ -1,7 +1,8 @@
 # Węzły LagunBus
 
 Oprogramowanie urządzeń fizycznych — **klawisz** i **wyjście**, a od FEAT-09 **trzy
-klawisze** (`key3`) i **osiem wyjść na MCP23017** (`out8`) — na ESP32-C3 Super Mini
+klawisze** (`key3`), **osiem wyjść na MCP23017** (`out8`), a od DEVICE-01 **czujnik
+pokojowy** (`env`: temperatura, wilgotność, światło) — na ESP32-C3 Super Mini
 z zewnętrznym nadajnikiem CAN.
 
 The protocol itself is **not here**. The node library — C for this firmware, Python for
@@ -35,7 +36,7 @@ git submodule update --init          # once after cloning: fills lib/lagunbus-no
             │
             ▼
   ports/esp32c3/                    TWAI + NVS + esp_timer + Uid from eFuse
-  apps/key, key3, output, out8      read pins, drive outputs
+  apps/key, key3, output, out8, env read pins, drive outputs, read sensors
 ```
 
 Both applications point `EXTRA_COMPONENT_DIRS` at `lib/lagunbus-node/c/lagunbus` and at
@@ -84,12 +85,15 @@ devices/
 ├── ports/
 │   └── esp32c3/                TWAI + NVS + esp_timer + Uid z eFuse
 ├── components/
-│   └── mcp23017/               ekspander I²C — rejestry, nie endpointy (apps/out8)
+│   ├── mcp23017/               ekspander I²C — rejestry, nie endpointy (apps/out8)
+│   ├── sht4x/                  temperatura i wilgotność SHT40 (apps/env)
+│   └── veml7700/               natężenie światła VEML7700, sam dobiera zakres (apps/env)
 ├── apps/
 │   ├── key/                    klawisz
 │   ├── key3/                   trzy klawisze (zadania/zrobione/FEAT-09.md)
 │   ├── output/                 wyjście (przekaźnik)
-│   └── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
+│   ├── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
+│   └── env/                    czujnik: SHT40 + VEML7700 (zadania/zrobione/DEVICE-01.md)
 ├── tools/                      flash.sh, monitor.sh
 └── .devcontainer/              ESP-IDF v5.3.1 w kontenerze
 ```
@@ -233,7 +237,7 @@ GPIO wybiera się w `idf.py menuconfig` → *LagunBus*; powyższe to wartości d
 **Pin-to-pin wiring of each device** — every connection, power and transceiver included —
 is in the application's own README: [`apps/key`](apps/key/README.md),
 [`apps/key3`](apps/key3/README.md), [`apps/output`](apps/output/README.md),
-[`apps/out8`](apps/out8/README.md).
+[`apps/out8`](apps/out8/README.md), [`apps/env`](apps/env/README.md).
 
 | Czego nie ruszać | Dlaczego |
 |---|---|
@@ -365,6 +369,7 @@ the next free number here:
 | `0x0011` | `apps/key3` | three keys, click / raw, hold |
 | `0x0020` | `apps/output` | one relay on a GPIO |
 | `0x0021` | `apps/out8` | eight outputs on an MCP23017 |
+| `0x0030` | `apps/env` | temperature, humidity (SHT40) and light (VEML7700) |
 
 ### Magistrala
 
