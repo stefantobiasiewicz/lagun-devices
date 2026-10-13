@@ -2,7 +2,8 @@
 
 Oprogramowanie urządzeń fizycznych — **klawisz** i **wyjście**, a od FEAT-09 **trzy
 klawisze** (`key3`), **osiem wyjść na MCP23017** (`out8`), a od DEVICE-01 **czujnik
-pokojowy** (`env`: temperatura, wilgotność, światło) — na ESP32-C3 Super Mini
+pokojowy** (`env`: temperatura, wilgotność, światło), a od DEVICE-04 **wyświetlacz
+e-papierowy** (`epd`: temperatura i wilgotność) — na ESP32-C3 Super Mini
 z zewnętrznym nadajnikiem CAN.
 
 The protocol itself is **not here**. The node library — C for this firmware, Python for
@@ -36,7 +37,7 @@ git submodule update --init          # once after cloning: fills lib/lagunbus-no
             │
             ▼
   ports/esp32c3/                    TWAI + NVS + esp_timer + Uid from eFuse
-  apps/key, key3, output, out8, env read pins, drive outputs, read sensors
+  apps/key, key3, output, out8, env, epd   read pins, drive outputs, read sensors, draw
 ```
 
 Both applications point `EXTRA_COMPONENT_DIRS` at `lib/lagunbus-node/c/lagunbus` and at
@@ -87,13 +88,15 @@ devices/
 ├── components/
 │   ├── mcp23017/               ekspander I²C — rejestry, nie endpointy (apps/out8)
 │   ├── sht4x/                  temperatura i wilgotność SHT40 (apps/env)
-│   └── veml7700/               natężenie światła VEML7700, sam dobiera zakres (apps/env)
+│   ├── veml7700/               natężenie światła VEML7700, sam dobiera zakres (apps/env)
+│   └── epd1in9/                e-papier segmentowy Waveshare 1,9″ (IST7134), bez czekania (apps/epd)
 ├── apps/
 │   ├── key/                    klawisz
 │   ├── key3/                   trzy klawisze (zadania/zrobione/FEAT-09.md)
 │   ├── output/                 wyjście (przekaźnik)
 │   ├── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
-│   └── env/                    czujnik: SHT40 + VEML7700 (zadania/zrobione/DEVICE-01.md)
+│   ├── env/                    czujnik: SHT40 + VEML7700 (zadania/zrobione/DEVICE-01.md)
+│   └── epd/                    wyświetlacz: e-papier, dwa pola Display (zadania/zrobione/DEVICE-04.md)
 ├── tools/                      flash.sh, monitor.sh
 └── .devcontainer/              ESP-IDF v5.3.1 w kontenerze
 ```
@@ -237,13 +240,15 @@ GPIO wybiera się w `idf.py menuconfig` → *LagunBus*; powyższe to wartości d
 **Pin-to-pin wiring of each device** — every connection, power and transceiver included —
 is in the application's own README: [`apps/key`](apps/key/README.md),
 [`apps/key3`](apps/key3/README.md), [`apps/output`](apps/output/README.md),
-[`apps/out8`](apps/out8/README.md), [`apps/env`](apps/env/README.md).
+[`apps/out8`](apps/out8/README.md), [`apps/env`](apps/env/README.md),
+[`apps/epd`](apps/epd/README.md).
 
 | Czego nie ruszać | Dlaczego |
 |---|---|
 | GPIO2, GPIO8, GPIO9 | wybór trybu startu — stan w chwili resetu decyduje, czy płytka wystartuje |
 | GPIO18, GPIO19 | USB Serial/JTAG, czyli wgrywanie i dziennik |
-| GPIO20, GPIO21 | UART0 |
+| GPIO21 | UART0 TX — ROM nadaje na nim przy starcie |
+| GPIO20 | UART0 RX — **wolny jako wejście**, bo konsola idzie przez USB Serial/JTAG (`CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` w każdej aplikacji); `apps/epd` czyta na nim `BUSY` (`zadania/zrobione/DEVICE-04.md`, N2). Nie jako wyjście |
 
 GPIO8 jest wyjątkiem w jedną stronę: siedzi tam dioda i **po starcie** wolno nią sterować.
 GPIO9 (przycisk BOOT) tak samo — po starcie to zwykłe wejście. Oba są dziś przyciskiem
@@ -369,6 +374,7 @@ the next free number here:
 | `0x0011` | `apps/key3` | three keys, click / raw, hold |
 | `0x0020` | `apps/output` | one relay on a GPIO |
 | `0x0021` | `apps/out8` | eight outputs on an MCP23017 |
+| `0x0023` | `apps/epd` | e-paper: temperature and humidity on a Waveshare 1.9″ segment panel |
 | `0x0030` | `apps/env` | temperature, humidity (SHT40) and light (VEML7700) |
 
 ### Magistrala

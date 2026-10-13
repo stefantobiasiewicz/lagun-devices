@@ -13,7 +13,7 @@ APP="${1:-}"
 PORT="${2:-}"
 
 if [ -z "$APP" ]; then
-    echo "usage: $0 <key|key3|output|out8> [port]" >&2
+    echo "usage: $0 <key|key3|output|out8|env|epd> [port]" >&2
     echo >&2
     echo "Ports visible right now:" >&2
     ls /dev/cu.usbmodem* /dev/cu.wchusbserial* 2>/dev/null | sed 's/^/  /' >&2 \
