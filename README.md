@@ -152,6 +152,17 @@ trybu przyjmowania); zapamiętany stan wyjścia przepada. Po tej zmianie obrazó
 nie przebudowano — pierwszy build w kontenerze pokaże, czy po zmianie nazw aplikacji
 (`apps/key`, `apps/output`) nic nie zostało.
 
+**Settings in NVS (since `zadania/zrobione/TASK-01.md`).** Every writable persistent
+attribute — the common ones included — is stored under its own key `a<endpoint>.<element
+in hex>` (`a4.13` is `PowerOnBehaviour` of ep4) when the hub writes it, and loaded before
+`Booted`. A board flashed with an older image has none of these keys and starts from its
+defaults, as before; the hub's reconciling writes them once. A factory reset erases them
+through `nvs_erase_key` (`esp_erase` in `ports/esp32c3/platform.c`); the boot counter,
+`PressCount` and the outputs' remembered state stay, and the address is overwritten with
+"none", as before.
+`ReportMinGap` of `apps/output` and `apps/out8` moved from the attribute rows to the
+endpoint's `.common`; a row `LB_COMMON_*` would now be ignored.
+
 ### Build w kontenerze, wgrywanie z gospodarza
 
 Docker Desktop na macOS nie przepuszcza USB i nie ma na to obejścia prostszego niż to.

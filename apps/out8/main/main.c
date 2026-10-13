@@ -72,10 +72,8 @@ static void mcp_check(esp_err_t err, const char *what)
          * not something for the hub to write (zadania/zrobione/CR-04.md, N7). */       \
         {LB_OUT_AUTO_OFF_TIME,      LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(0)},            \
         {LB_OUT_PURPOSE,            LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(1)}, /* Light */ \
-        /* As apps/output: a held-down key toggling an output must not flood the bus. */  \
-        {LB_COMMON_REPORTMINGAP,    LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(200)},          \
     }
-static lb_attr_t attributes[OUTPUT_COUNT][5] = {
+static lb_attr_t attributes[OUTPUT_COUNT][4] = {
     OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES,
     OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES, OUTPUT_ATTRIBUTES,
 };
@@ -89,6 +87,8 @@ static lb_attr_t attributes[OUTPUT_COUNT][5] = {
         .channel = (uint8_t)(1 + (i)),                                \
         .attrs = attributes[i],                                       \
         .attr_count = sizeof attributes[i] / sizeof attributes[i][0], \
+        /* As apps/output: a held-down key must not flood the bus. */  \
+        .common = {.report_min_gap = 200},                            \
     }
 static lb_endpoint_t endpoints[OUTPUT_COUNT] = {
     OUTPUT_ENDPOINT(0), OUTPUT_ENDPOINT(1), OUTPUT_ENDPOINT(2), OUTPUT_ENDPOINT(3),

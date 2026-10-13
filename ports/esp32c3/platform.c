@@ -50,6 +50,21 @@ static bool esp_load(void *ctx, const char *key, void *out, size_t len)
     return err == ESP_OK && how_many == len;
 }
 
+/** Forget a key — the factory reset erases every stored setting (lb_platform_t.erase).
+ * A key that was never stored answers ESP_ERR_NVS_NOT_FOUND, which is not a fault. */
+static void esp_erase(void *ctx, const char *key)
+{
+    (void)ctx;
+    nvs_handle_t h;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) != ESP_OK) {
+        return;
+    }
+    if (nvs_erase_key(h, key) == ESP_OK) {
+        nvs_commit(h);
+    }
+    nvs_close(h);
+}
+
 static uint32_t esp_rand(void *ctx)
 {
     (void)ctx;
@@ -109,6 +124,7 @@ esp_err_t lb_esp_platform_init(lb_platform_t *out)
     out->millis = esp_millis;
     out->store = esp_store;
     out->load = esp_load;
+    out->erase = esp_erase;
     out->random = esp_rand;
     out->restart = esp_restart_node;
     out->reset_reason = esp_reset_reason_node;

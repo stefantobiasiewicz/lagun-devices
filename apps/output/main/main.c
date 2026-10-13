@@ -28,9 +28,6 @@ static lb_attr_t attributes[] = {
      * (types/0x0020-output.md §5.6). */
     {LB_OUT_AUTO_OFF_TIME,      LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(0)},
     {LB_OUT_PURPOSE,            LB_T_ENUM8, LB_RW | LB_PERSIST, LB_NUM(1)}, /* Light */
-    /* Without this, a held-down key toggling the output would flood the bus
-     * with reports. 200 ms does not lose the last state, only the ones on the way. */
-    {LB_COMMON_REPORTMINGAP,    LB_T_U16,   LB_RW | LB_PERSIST, LB_NUM(200)},
 };
 
 static lb_endpoint_t endpoints[] = {{
@@ -41,6 +38,10 @@ static lb_endpoint_t endpoints[] = {{
     .channel = 1,
     .attrs = attributes,
     .attr_count = sizeof attributes / sizeof attributes[0],
+    /* Without this, a held-down key toggling the output would flood the bus with
+     * reports. 200 ms does not lose the last state, only the ones on the way. A common
+     * setting, so it lives here and not in the rows (lagunbus-node, TASK-01). */
+    .common = {.report_min_gap = 200},
 }};
 
 
