@@ -11,8 +11,8 @@
  *
  *   - −9.9 … 199.9 °C, 0.0 … 99.9 %; outside, "absent" or expired — dashes (N1);
  *   - BUSY on GPIO20 (N2);
- *   - a refresh at most every LAGUN_EPD_MIN_GAP_S, except while the glass shows no
- *     number; a full one after LAGUN_EPD_FULL_EVERY partial ones (N3);
+ *   - every write at once as a partial refresh (LAGUN_EPD_MIN_GAP_S 0 since
+ *     2026-10-14), a full one after LAGUN_EPD_FULL_EVERY partial ones (N3);
  *   - always °C, no icons (N4, N5); `ContentTimeout` exposed, 600 s (N6);
  *   - `DeviceType` 0x0023, class CONTROL (N8);
  *   - the panel never makes the loop wait: BUSY is looked at, not waited on (N10);
@@ -37,7 +37,7 @@
 static const char *TAG = "epd";
 
 /** A refresh that failed on I²C is tried again after this — not at every turn of the
- * loop, which would fill the log while the glass shows no number (no gap then). */
+ * loop, which would fill the log: with no gap the pacer would allow one at once. */
 #define RETRY_MS 5000u
 
 /* --- the endpoints ------------------------------------------------------------------- */
@@ -151,8 +151,8 @@ static void screen_tick(uint32_t now)
                           : kind == LB_EPAPER_FULL ? EPD1IN9_WAVE_FULL
                                                    : EPD1IN9_WAVE_QUICK;
     esp_err_t err = epd1in9_refresh(&panel, image, wave, now);
-    /* Counted even when it failed: the pacer's gap then also spaces the retries of a
-     * panel that answers again. */
+    /* Counted even when it failed, so a failed refresh still counts towards the next full
+     * one; the retries are spaced by RETRY_MS. */
     lb_epaper_started(&pacer, now, kind, content);
     if (err == ESP_OK) {
         memcpy(glass, image, sizeof glass);

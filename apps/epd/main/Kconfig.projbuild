@@ -39,13 +39,14 @@ config LAGUN_EPD_BUSY_GPIO
 
 config LAGUN_EPD_MIN_GAP_S
     int "Seconds between refreshes, at least"
-    default 60
-    range 1 3600
+    default 0
+    range 0 3600
     help
-        A change of a number waits at most this long for the glass (DEVICE-04, N3).
-        Not while the glass shows no number: a value after a start or an expiry goes
-        out at once. The maker asks for minutes between refreshes — every one wears
-        the panel; set it low only for a bring-up.
+        0 — every write reaches the glass at once, as a partial refresh (DEVICE-04,
+        N3, since 2026-10-14). More — a change waits up to that long, except while
+        the glass shows no number. The maker asks for minutes between refreshes, as
+        every one wears the panel; a minute behind the sensor proved too slow to
+        live with.
 
 config LAGUN_EPD_FULL_EVERY
     int "Partial refreshes before a full one"

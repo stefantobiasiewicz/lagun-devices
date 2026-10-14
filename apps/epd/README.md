@@ -18,12 +18,13 @@ not fit** — the panel has no hundreds place for humidity — and shows dashes 
 °C; the Bluetooth and power icons stay off. The same device runs on a computer as
 `lagun-sim epd`, its glass drawn by the same library code.
 
-**The glass lags the field.** E-paper wears with every refresh, so the glass changes at
-most once a minute (`LAGUN_EPD_MIN_GAP_S`), and every 10th refresh is a full one — the
-whole glass flashes once to wipe the traces partial refreshes leave
-(`LAGUN_EPD_FULL_EVERY`). While the glass shows no number — after a power-up or an
-expiry — a value goes out at once. At power-up the glass is cleared: it keeps whatever it
-showed when the power went.
+**Every write reaches the glass at once** as a partial refresh (0.3 s, no flash), and
+every 10th refresh is a full one — the whole glass flashes once to wipe the traces partial
+refreshes leave (`LAGUN_EPD_FULL_EVERY`). A write of what the glass already shows costs
+no refresh. The maker asks for minutes between refreshes, as every one wears the panel;
+`LAGUN_EPD_MIN_GAP_S` sets such a gap, 0 by default since a minute behind the sensor was
+too slow (DEVICE-04, N3). At power-up the glass is cleared: it keeps whatever it showed
+when the power went.
 
 ```
                      ESP32-C3 Super Mini
