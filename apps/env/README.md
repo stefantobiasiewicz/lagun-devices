@@ -44,6 +44,26 @@ the chip. The same device runs on a computer as `lagun-sim env`.
                                  └──────────────────────────────────────────────────┘
 ```
 
+### The board from the top
+
+The Super Mini's pin labels are printed on its **underside**, hidden once it sits in a
+breadboard. This is the board seen from the **top** — components up, USB-C away from
+you — with this device's connections: `●` used, `○` free.
+
+```
+                                               ┌─┤ USB-C ├─┐
+                                           5V ○┤           ├● GPIO5  ── SN65HVD230 RXD
+SN65HVD230 GND, SHT40 + VEML7700 GND ──   GND ●┤           ├● GPIO6  ── SDA (SHT40, VEML7700)
+SN65HVD230 3V3, SHT40 + VEML7700 VCC ──   3V3 ●┤           ├● GPIO7  ── SCL (SHT40, VEML7700)
+                      SN65HVD230 TXD ── GPIO4 ●┤           ├● GPIO8  ── status LED, on the board
+                                        GPIO3 ○┤           ├● GPIO9  ── BOOT = service button, on the board
+                                        GPIO2 ○┤           ├○ GPIO10
+                                        GPIO1 ○┤           ├○ GPIO20
+                                        GPIO0 ○┤           ├○ GPIO21
+                                               │  antenna  │
+                                               └───────────┘
+```
+
 - **Modules with a regulator and their own pull-ups** (Adafruit, Pimoroni, most
   breakout boards) go in as they are, without the 4.7 kΩ resistors.
 - **Keep the VEML7700 away from the status LED** (GPIO8, on the board): otherwise it

@@ -1,0 +1,14 @@
+CONFIG_IDF_TARGET="esp32c3"
+
+# The log goes over USB Serial/JTAG — the Super Mini has no separate UART chip, so this
+# is the only way without soldering anything on.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# The node loop runs every 2 ms, and 100 Hz gives a 10 ms grain. At 1000 Hz
+# `vTaskDelay(1)` really is a millisecond, not ten.
+CONFIG_FREERTOS_HZ=1000
+
+# A power loss in the middle of an NVS write can leave a corrupted entry.
+CONFIG_ESP_BROWNOUT_DET=y
+
+CONFIG_COMPILER_WARN_WRITE_STRINGS=y

@@ -25,6 +25,26 @@ in [`../../README.md`](../../README.md) § Sprzęt.
        └───────────────────┘
 ```
 
+### The board from the top
+
+The Super Mini's pin labels are printed on its **underside**, hidden once it sits in a
+breadboard. This is the board seen from the **top** — components up, USB-C away from
+you — with this device's connections: `●` used, `○` free.
+
+```
+                                    ┌─┤ USB-C ├─┐
+                                5V ○┤           ├● GPIO5  ── SN65HVD230 RXD
+SN65HVD230 GND, relay GND ──   GND ●┤           ├○ GPIO6
+           SN65HVD230 3V3 ──   3V3 ●┤           ├○ GPIO7
+           SN65HVD230 TXD ── GPIO4 ●┤           ├● GPIO8  ── status LED, on the board
+                             GPIO3 ○┤           ├● GPIO9  ── BOOT = service button, on the board
+                             GPIO2 ○┤           ├● GPIO10 ── relay module IN
+                             GPIO1 ○┤           ├○ GPIO20
+                             GPIO0 ○┤           ├○ GPIO21
+                                    │  antenna  │
+                                    └───────────┘
+```
+
 ## Pin to pin
 
 | from | to | what |

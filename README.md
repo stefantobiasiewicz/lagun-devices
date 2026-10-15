@@ -93,6 +93,7 @@ devices/
 ├── apps/
 │   ├── key/                    klawisz
 │   ├── key3/                   trzy klawisze (zadania/zrobione/FEAT-09.md)
+│   ├── dial/                   pokrętło: enkoder EC11 + klawisz w osi (zadania/devices/DEVICE-02.md)
 │   ├── output/                 wyjście (przekaźnik)
 │   ├── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
 │   ├── env/                    czujnik: SHT40 + VEML7700 (zadania/zrobione/DEVICE-01.md)
@@ -222,6 +223,32 @@ procesora.
 Oznaczenie sprawdza się na samym układzie, nie na opisie aukcji — moduły „CAN dla
 Arduino" mają często TJA1050.
 
+### The Super Mini from the top
+
+The pin labels are printed on the board's **underside**, so in a breadboard they are
+out of sight. Seen from the **top** — components up, USB-C away from you — the two rows
+are these (`●` a pin with a note). Every application's README draws the same view
+with its own connections.
+
+```
+                                ┌─┤ USB-C ├─┐
+5 V in (not with USB) ──    5V ●┤           ├● GPIO5  ── TWAI RX (every app)
+               ground ──   GND ●┤           ├○ GPIO6
+            3.3 V out ──   3V3 ●┤           ├○ GPIO7
+  TWAI TX (every app) ── GPIO4 ●┤           ├● GPIO8  ── status LED, strapping
+                         GPIO3 ○┤           ├● GPIO9  ── BOOT, strapping
+    strapping — avoid ── GPIO2 ●┤           ├○ GPIO10
+                         GPIO1 ○┤           ├● GPIO20 ── UART RX — input only
+                         GPIO0 ○┤           ├● GPIO21 ── UART TX — ROM talks at boot
+                                │  antenna  │
+                                └───────────┘
+```
+
+Check it once on a new batch of boards: the pin drawn as `GND` rings through to the
+USB-C shell, and the one under it measures 3.3 V with USB plugged in. A board seen
+from below has the two rows the other way round — the mistake this drawing is here
+to prevent.
+
 ### Połączenia
 
 ```
@@ -241,7 +268,7 @@ GPIO wybiera się w `idf.py menuconfig` → *LagunBus*; powyższe to wartości d
 is in the application's own README: [`apps/key`](apps/key/README.md),
 [`apps/key3`](apps/key3/README.md), [`apps/output`](apps/output/README.md),
 [`apps/out8`](apps/out8/README.md), [`apps/env`](apps/env/README.md),
-[`apps/epd`](apps/epd/README.md).
+[`apps/epd`](apps/epd/README.md), [`apps/dial`](apps/dial/README.md).
 
 | Czego nie ruszać | Dlaczego |
 |---|---|
@@ -372,6 +399,7 @@ the next free number here:
 |---|---|---|
 | `0x0010` | `apps/key` | one key, multi-click |
 | `0x0011` | `apps/key3` | three keys, click / raw, hold |
+| `0x0012` | `apps/dial` | a knob: encoder value (`ValueInput`) and the key in its shaft |
 | `0x0020` | `apps/output` | one relay on a GPIO |
 | `0x0021` | `apps/out8` | eight outputs on an MCP23017 |
 | `0x0023` | `apps/epd` | e-paper: temperature and humidity on a Waveshare 1.9″ segment panel |
