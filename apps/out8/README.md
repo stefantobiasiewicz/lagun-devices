@@ -51,17 +51,17 @@ breadboard. This is the board seen from the **top** — components up, USB-C awa
 you — with this device's connections: `●` used, `○` free.
 
 ```
-                                       ┌─┤ USB-C ├─┐
-                                   5V ○┤           ├● GPIO5  ── SN65HVD230 RXD
-SN65HVD230 GND, MCP23017 VSS ──   GND ●┤           ├● GPIO6  ── MCP23017 SDA
-SN65HVD230 3V3, MCP23017 VDD ──   3V3 ●┤           ├● GPIO7  ── MCP23017 SCL
-              SN65HVD230 TXD ── GPIO4 ●┤           ├● GPIO8  ── status LED, on the board
-                                GPIO3 ○┤           ├● GPIO9  ── BOOT = service button, on the board
-                                GPIO2 ○┤           ├○ GPIO10
-                                GPIO1 ○┤           ├○ GPIO20
-                                GPIO0 ○┤           ├○ GPIO21
-                                       │  antenna  │
-                                       └───────────┘
+                                               ┌─┤ USB-C ├─┐
+                     SN65HVD230 RXD ──  GPIO5 ●┤           ├○ 5V
+                       MCP23017 SDA ──  GPIO6 ●┤           ├● GND    ── SN65HVD230 GND, MCP23017 VSS
+                       MCP23017 SCL ──  GPIO7 ●┤           ├● 3V3    ── SN65HVD230 3V3, MCP23017 VDD
+           status LED, on the board ──  GPIO8 ●┤           ├● GPIO4  ── SN65HVD230 TXD
+BOOT = service button, on the board ──  GPIO9 ●┤           ├○ GPIO3
+                                       GPIO10 ○┤           ├○ GPIO2
+                                       GPIO20 ○┤           ├○ GPIO1
+                                       GPIO21 ○┤           ├○ GPIO0
+                                               │  antenna  │
+                                               └───────────┘
 ```
 
 ## Pin to pin

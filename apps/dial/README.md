@@ -17,10 +17,10 @@ defaults of `idf.py menuconfig` → *LagunBus — dial*; power and the general r
        │                   │  │                    │        CANH  ├──── bus CANH
        │                   │  │                    │        CANL  ├──── bus CANL
        │                   │  │                    └──────────────┘
-       │             GPIO0 ├──┼──────────── A   ┐
-       │             GPIO1 ├──┼──────────── B   │ EC11
+       │            GPIO20 ├──┼──────────── A   ┐
+       │            GPIO21 ├──┼───[1 kΩ]─── B   │ EC11
        │                   │  ├──────────── C   │ (common)
-       │             GPIO3 ├──┼──────────── SW  │ key in the shaft
+       │            GPIO10 ├──┼──────────── SW  │ key in the shaft
        │                   │  └──────────── SW2 ┘ (the key's other contact)
        │ BOOT (GPIO9)      │  service button — on the board
        │ LED  (GPIO8)      │  status LED — on the board
@@ -34,17 +34,17 @@ breadboard. This is the board seen from the **top** — components up, USB-C awa
 you — with this device's connections: `●` used, `○` free.
 
 ```
-                                       ┌─┤ USB-C ├─┐
-                                   5V ○┤           ├● GPIO5  ── SN65HVD230 RXD
-SN65HVD230 GND, EC11 C + SW2 ──   GND ●┤           ├○ GPIO6
-              SN65HVD230 3V3 ──   3V3 ●┤           ├○ GPIO7
-              SN65HVD230 TXD ── GPIO4 ●┤           ├● GPIO8  ── status LED, on the board
-                     EC11 SW ── GPIO3 ●┤           ├● GPIO9  ── BOOT = service button, on the board
-                                GPIO2 ○┤           ├○ GPIO10
-                      EC11 B ── GPIO1 ●┤           ├○ GPIO20
-                      EC11 A ── GPIO0 ●┤           ├○ GPIO21
-                                       │  antenna  │
-                                       └───────────┘
+                                               ┌─┤ USB-C ├─┐
+                     SN65HVD230 RXD ──  GPIO5 ●┤           ├○ 5V
+                                        GPIO6 ○┤           ├● GND    ── SN65HVD230 GND, EC11 C + SW2
+                                        GPIO7 ○┤           ├● 3V3    ── SN65HVD230 3V3
+           status LED, on the board ──  GPIO8 ●┤           ├● GPIO4  ── SN65HVD230 TXD
+BOOT = service button, on the board ──  GPIO9 ●┤           ├○ GPIO3
+                            EC11 SW ── GPIO10 ●┤           ├○ GPIO2
+                             EC11 A ── GPIO20 ●┤           ├○ GPIO1
+                      EC11 B (1 kΩ) ── GPIO21 ●┤           ├○ GPIO0
+                                               │  antenna  │
+                                               └───────────┘
 ```
 
 ## Pin to pin
@@ -57,10 +57,10 @@ SN65HVD230 GND, EC11 C + SW2 ──   GND ●┤           ├○ GPIO6
 | Super Mini `GPIO5` | SN65HVD230 `RXD` / `R` | TWAI receive |
 | SN65HVD230 `CANH` | bus `CANH` | twisted pair |
 | SN65HVD230 `CANL` | bus `CANL` | twisted pair |
-| Super Mini `GPIO0` | EC11 `A` | internal pull-up; an interrupt on both edges |
-| Super Mini `GPIO1` | EC11 `B` | the same |
+| Super Mini `GPIO20` | EC11 `A` | internal pull-up; an interrupt on both edges |
+| Super Mini `GPIO21` | 1 kΩ, then EC11 `B` | the same; the resistor because the ROM drives GPIO21 high at reset |
 | EC11 `C` | Super Mini `GND` | the encoder's common pin |
-| Super Mini `GPIO3` | EC11 `SW` | the shaft key; internal pull-up, LOW = pressed |
+| Super Mini `GPIO10` | EC11 `SW` | the shaft key; internal pull-up, LOW = pressed |
 | EC11 `SW2` | Super Mini `GND` | the key's other contact |
 | — | Super Mini `GPIO9` | service button: BOOT on the board |
 | — | Super Mini `GPIO8` | status LED: on the board |
@@ -69,9 +69,15 @@ A module with resistors on it (KY-040 and the like) instead of a bare EC11: its 
 **3V3, not 5V** — the pins of the C3 are not 5 V tolerant — `GND` to `GND`, `CLK` is A,
 `DT` is B, `SW` the key.
 
-The whole encoder sits on the row with `GND` — five wires in one place. GPIO0 and GPIO1
-are the pins of a 32 kHz crystal this board does not have, free here; GPIO2 between them
-and GPIO3 decides how the chip starts, so it stays empty.
+A, B and SW sit at the bottom of the row with GPIO5…GPIO21, C and SW2 go across to
+`GND` on the other row. GPIO21 and GPIO20 are UART0, free here because the console goes
+over USB — but the ROM prints its boot message on GPIO21 (TX), driving it high for a few
+milliseconds after every reset. A knob left between two detents has B shorted to ground
+right then; the **1 kΩ** in series keeps that from being a short on the pin, and the
+internal 45 kΩ pull-up still reads B as low through it. A on 20 and B on 21 make a
+clockwise turn go up on the first board; the other way round, swap them or set
+`LAGUN_ENCODER_REVERSE`. GPIO20 (RX) is only ever an
+input and needs nothing.
 
 Power: USB-C, or 5 V to the `5V` pin — never both at once.
 

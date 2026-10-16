@@ -51,20 +51,21 @@ breadboard. This is the board seen from the **top** — components up, USB-C awa
 you — with this device's connections: `●` used, `○` free.
 
 ```
-                                      ┌─┤ USB-C ├─┐
-                                  5V ○┤           ├● GPIO5  ── SN65HVD230 RXD
-SN65HVD230 GND, e-paper GND ──   GND ●┤           ├● GPIO6  ── e-paper SDA
-SN65HVD230 3V3, e-paper VCC ──   3V3 ●┤           ├● GPIO7  ── e-paper SCL
-             SN65HVD230 TXD ── GPIO4 ●┤           ├● GPIO8  ── status LED, on the board
-                               GPIO3 ○┤           ├● GPIO9  ── BOOT = service button, on the board
-                               GPIO2 ○┤           ├● GPIO10 ── e-paper RST
-                               GPIO1 ○┤           ├● GPIO20 ── e-paper BUSY
-                               GPIO0 ○┤           ├○ GPIO21
-                                      │  antenna  │
-                                      └───────────┘
+                                               ┌─┤ USB-C ├─┐
+                     SN65HVD230 RXD ──  GPIO5 ●┤           ├○ 5V
+                        e-paper SDA ──  GPIO6 ●┤           ├● GND    ── SN65HVD230 GND, e-paper GND
+                        e-paper SCL ──  GPIO7 ●┤           ├● 3V3    ── SN65HVD230 3V3, e-paper VCC
+           status LED, on the board ──  GPIO8 ●┤           ├● GPIO4  ── SN65HVD230 TXD
+BOOT = service button, on the board ──  GPIO9 ●┤           ├○ GPIO3
+                        e-paper RST ── GPIO10 ●┤           ├○ GPIO2
+                       e-paper BUSY ── GPIO20 ●┤           ├○ GPIO1
+                                       GPIO21 ○┤           ├○ GPIO0
+                                               │  antenna  │
+                                               └───────────┘
 ```
 
-- **Every pin of the screen is on the right side of the board.** GPIO20 is UART0 RX,
+- **Every pin of the screen is on one row of the board** — the one with GPIO5…GPIO21,
+  on the left seen from the top. GPIO20 is UART0 RX,
   free as an input because the console goes over USB (DEVICE-04 N2).
 - **BUSY is low while the panel works** (`BUSY_N`). The board pulls it down: unwired, it
   reads "busy", and the log says `BUSY low … is it wired?` after every refresh.

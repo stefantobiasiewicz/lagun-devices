@@ -52,14 +52,14 @@ you — with this device's connections: `●` used, `○` free.
 
 ```
                                                ┌─┤ USB-C ├─┐
-                                           5V ○┤           ├● GPIO5  ── SN65HVD230 RXD
-SN65HVD230 GND, SHT40 + VEML7700 GND ──   GND ●┤           ├● GPIO6  ── SDA (SHT40, VEML7700)
-SN65HVD230 3V3, SHT40 + VEML7700 VCC ──   3V3 ●┤           ├● GPIO7  ── SCL (SHT40, VEML7700)
-                      SN65HVD230 TXD ── GPIO4 ●┤           ├● GPIO8  ── status LED, on the board
-                                        GPIO3 ○┤           ├● GPIO9  ── BOOT = service button, on the board
-                                        GPIO2 ○┤           ├○ GPIO10
-                                        GPIO1 ○┤           ├○ GPIO20
-                                        GPIO0 ○┤           ├○ GPIO21
+                     SN65HVD230 RXD ──  GPIO5 ●┤           ├○ 5V
+              SDA (SHT40, VEML7700) ──  GPIO6 ●┤           ├● GND    ── SN65HVD230 GND, SHT40 + VEML7700 GND
+              SCL (SHT40, VEML7700) ──  GPIO7 ●┤           ├● 3V3    ── SN65HVD230 3V3, SHT40 + VEML7700 VCC
+           status LED, on the board ──  GPIO8 ●┤           ├● GPIO4  ── SN65HVD230 TXD
+BOOT = service button, on the board ──  GPIO9 ●┤           ├○ GPIO3
+                                       GPIO10 ○┤           ├○ GPIO2
+                                       GPIO20 ○┤           ├○ GPIO1
+                                       GPIO21 ○┤           ├○ GPIO0
                                                │  antenna  │
                                                └───────────┘
 ```

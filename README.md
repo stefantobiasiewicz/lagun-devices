@@ -231,17 +231,17 @@ are these (`●` a pin with a note). Every application's README draws the same v
 with its own connections.
 
 ```
-                                ┌─┤ USB-C ├─┐
-5 V in (not with USB) ──    5V ●┤           ├● GPIO5  ── TWAI RX (every app)
-               ground ──   GND ●┤           ├○ GPIO6
-            3.3 V out ──   3V3 ●┤           ├○ GPIO7
-  TWAI TX (every app) ── GPIO4 ●┤           ├● GPIO8  ── status LED, strapping
-                         GPIO3 ○┤           ├● GPIO9  ── BOOT, strapping
-    strapping — avoid ── GPIO2 ●┤           ├○ GPIO10
-                         GPIO1 ○┤           ├● GPIO20 ── UART RX — input only
-                         GPIO0 ○┤           ├● GPIO21 ── UART TX — ROM talks at boot
-                                │  antenna  │
-                                └───────────┘
+                                       ┌─┤ USB-C ├─┐
+        TWAI RX (every app) ──  GPIO5 ●┤           ├● 5V     ── 5 V in (not with USB)
+                                GPIO6 ○┤           ├● GND    ── ground
+                                GPIO7 ○┤           ├● 3V3    ── 3.3 V out
+      status LED, strapping ──  GPIO8 ●┤           ├● GPIO4  ── TWAI TX (every app)
+            BOOT, strapping ──  GPIO9 ●┤           ├○ GPIO3
+                               GPIO10 ○┤           ├● GPIO2  ── strapping — avoid
+       UART RX — input only ── GPIO20 ●┤           ├○ GPIO1
+UART TX — ROM talks at boot ── GPIO21 ●┤           ├○ GPIO0
+                                       │  antenna  │
+                                       └───────────┘
 ```
 
 Check it once on a new batch of boards: the pin drawn as `GND` rings through to the
