@@ -3,7 +3,7 @@
  * This file makes the DEVICE's decisions and touches the pins; the library gives the
  * tools (lib/lagunbus-node, `value_input.h`, `key.h`, `debounce.h`, tested on a computer
  * against `vectors/scenarios/value_input*.json` and `key*.json`). The library has no
- * hardware, not even a quadrature decoder (zadania/devices/DEVICE-02.md N10): the Gray
+ * hardware, not even a quadrature decoder (zadania/zrobione/DEVICE-02.md N10): the Gray
  * code is decoded here and the library gets "n steps". The decisions:
  *
  *   - ep4 `ValueInput`: `StepSize` 20 ‰ a detent (types/0x0011-value-input.md §6), no

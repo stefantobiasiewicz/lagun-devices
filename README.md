@@ -93,7 +93,7 @@ devices/
 ├── apps/
 │   ├── key/                    klawisz
 │   ├── key3/                   trzy klawisze (zadania/zrobione/FEAT-09.md)
-│   ├── dial/                   pokrętło: enkoder EC11 + klawisz w osi (zadania/devices/DEVICE-02.md)
+│   ├── dial/                   pokrętło: enkoder EC11 + klawisz w osi (zadania/zrobione/DEVICE-02.md)
 │   ├── output/                 wyjście (przekaźnik)
 │   ├── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
 │   ├── env/                    czujnik: SHT40 + VEML7700 (zadania/zrobione/DEVICE-01.md)

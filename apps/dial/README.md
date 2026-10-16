@@ -3,7 +3,7 @@
 ESP32-C3 Super Mini + SN65HVD230 CAN transceiver + an EC11 rotary encoder with a push
 switch. `DeviceType` 0x0012; endpoint 4 is the value (`ValueInput`, 20 ‰ a detent, no
 wrap), endpoint 5 the key in the shaft (`KeyInput`, `MULTICLICK` | `HOLD`), both on
-channel 1 — one thing a person touches (`zadania/devices/DEVICE-02.md`). Pins are the
+channel 1 — one thing a person touches (`zadania/zrobione/DEVICE-02.md`). Pins are the
 defaults of `idf.py menuconfig` → *LagunBus — dial*; power and the general rules are in
 [`../../README.md`](../../README.md) § Sprzęt.
 

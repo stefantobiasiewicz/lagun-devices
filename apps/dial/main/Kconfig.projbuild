@@ -39,7 +39,7 @@ config LAGUN_ENCODER_STEPS_PER_DETENT
         How many transitions of A and B one click of the knob makes. An EC11 makes 4
         (a full cycle between two detents); some make 2. Too many and a click does
         nothing until the next; too few and one click is two steps. Hardware, not an
-        attribute: the hub sees steps, never transitions (zadania/devices/DEVICE-02.md N3).
+        attribute: the hub sees steps, never transitions (zadania/zrobione/DEVICE-02.md N3).
 
 config LAGUN_ENCODER_REVERSE
     bool "Clockwise turns the value down"
