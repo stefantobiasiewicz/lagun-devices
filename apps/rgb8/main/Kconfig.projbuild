@@ -1,0 +1,72 @@
+menu "LagunBus — rgb8"
+
+config LAGUN_TWAI_TX
+    int "TWAI transmit GPIO"
+    default 4
+    help
+        4 and 5 by default, because on the ESP32-C3 Super Mini they are broken out
+        and play no other role. AVOID 2, 8 and 9 — those are boot-mode strapping
+        pins, and their state at reset decides whether the board starts at all.
+        Avoid 18 and 19 too: USB Serial/JTAG goes that way, that is, flashing and
+        the log.
+
+config LAGUN_TWAI_RX
+    int "TWAI receive GPIO"
+    default 5
+
+config LAGUN_RGB8_DATA_GPIO
+    int "WS2812 data GPIO"
+    default 6
+    help
+        DIN of the first LED, through a 330 ohm resistor. 6 by default — on the left
+        row of the Super Mini seen from the top, next to TWAI RX, and no strapping pin.
+
+config LAGUN_RGB8_LED_COUNT
+    int "LEDs in the chain"
+    default 8
+    range 1 64
+    help
+        All of them show the same colour: the chain is ONE endpoint for now
+        (zadania/devices/DEVICE-03.md).
+
+config LAGUN_RGB8_MAX_COMPONENT
+    int "Brightest a channel may go (of 255)"
+    default 80
+    range 1 255
+    help
+        A cap on the current: the whole picture is scaled so that full intent on a
+        channel lights it at this value, not at 255 — the colour does not change, only
+        how bright full is (zadania/devices/DEVICE-03.md, H1). At 80, eight LEDs at full
+        white draw about 8 x 60 mA x 80/255 = 150 mA from the 5 V pin.
+
+config LAGUN_SERVICE_GPIO
+    int "Service button GPIO"
+    default 9
+    help
+        The service button: held 5 s and let go, a factory reset by the device itself
+        (devices/README.md). 9 by default — BOOT on the Super Mini, wired to ground; an
+        external button goes from GPIO9 to GND next to it. Held at power-on it enters
+        the download mode instead, which harms nothing: let go and power up again.
+
+config LAGUN_STATUS_LED_GPIO
+    int "Status LED GPIO"
+    default 8
+    help
+        The status LED: what the node is doing (devices/README.md). 8 by default — the
+        on-board LED of the Super Mini; an external one goes from 3V3 through a resistor
+        to GPIO8. GPIO8 is a strapping pin and must not be pulled to ground at reset.
+
+config LAGUN_STATUS_LED_ACTIVE_LOW
+    bool "Status LED lights on a LOW level"
+    default y
+    help
+        Yes for the Super Mini's on-board LED and for an external one wired from 3V3.
+
+config LAGUN_BITRATE
+    int "Bus speed [bit/s]"
+    default 500000
+    help
+        Has to agree with the hub and with EVERY other node. A node at a different
+        speed not only hears nobody — it corrupts frames for all the others.
+
+endmenu

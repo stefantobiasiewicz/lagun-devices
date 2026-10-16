@@ -89,7 +89,8 @@ devices/
 │   ├── mcp23017/               ekspander I²C — rejestry, nie endpointy (apps/out8)
 │   ├── sht4x/                  temperatura i wilgotność SHT40 (apps/env)
 │   ├── veml7700/               natężenie światła VEML7700, sam dobiera zakres (apps/env)
-│   └── epd1in9/                e-papier segmentowy Waveshare 1,9″ (IST7134), bez czekania (apps/epd)
+│   ├── epd1in9/                e-papier segmentowy Waveshare 1,9″ (IST7134), bez czekania (apps/epd)
+│   └── ws2812/                 łańcuch WS2812 na RMT — bajty i czasy przebiegu, nie barwy (apps/rgb8)
 ├── apps/
 │   ├── key/                    klawisz
 │   ├── key3/                   trzy klawisze (zadania/zrobione/FEAT-09.md)
@@ -97,7 +98,8 @@ devices/
 │   ├── output/                 wyjście (przekaźnik)
 │   ├── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
 │   ├── env/                    czujnik: SHT40 + VEML7700 (zadania/zrobione/DEVICE-01.md)
-│   └── epd/                    wyświetlacz: e-papier, dwa pola Display (zadania/zrobione/DEVICE-04.md)
+│   ├── epd/                    wyświetlacz: e-papier, dwa pola Display (zadania/zrobione/DEVICE-04.md)
+│   └── rgb8/                   osiem WS2812 jako jedno światło kolorowe (zadania/devices/DEVICE-03.md)
 ├── tools/                      flash.sh, monitor.sh
 └── .devcontainer/              ESP-IDF v5.3.1 w kontenerze
 ```
@@ -268,7 +270,8 @@ GPIO wybiera się w `idf.py menuconfig` → *LagunBus*; powyższe to wartości d
 is in the application's own README: [`apps/key`](apps/key/README.md),
 [`apps/key3`](apps/key3/README.md), [`apps/output`](apps/output/README.md),
 [`apps/out8`](apps/out8/README.md), [`apps/env`](apps/env/README.md),
-[`apps/epd`](apps/epd/README.md), [`apps/dial`](apps/dial/README.md).
+[`apps/epd`](apps/epd/README.md), [`apps/dial`](apps/dial/README.md),
+[`apps/rgb8`](apps/rgb8/README.md).
 
 | Czego nie ruszać | Dlaczego |
 |---|---|
@@ -402,6 +405,7 @@ the next free number here:
 | `0x0012` | `apps/dial` | a knob: encoder value (`ValueInput`) and the key in its shaft |
 | `0x0020` | `apps/output` | one relay on a GPIO |
 | `0x0021` | `apps/out8` | eight outputs on an MCP23017 |
+| `0x0022` | `apps/rgb8` | eight WS2812 as one colour light (`Output`, `LEVEL \| COLOR_RGB`) |
 | `0x0023` | `apps/epd` | e-paper: temperature and humidity on a Waveshare 1.9″ segment panel |
 | `0x0030` | `apps/env` | temperature, humidity (SHT40) and light (VEML7700) |
 
