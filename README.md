@@ -28,10 +28,6 @@ odsyła `Uid` segmentami i ogłasza `Booted`. What the library still lacks is li
 git submodule update --init          # once after cloning: fills lib/lagunbus-node
 ```
 
-> **TODO:** the library has no GitHub repository yet, so `git submodule update` works only
-> on the machine that has the local clone. See the TODO at the top of
-> `lib/lagunbus-node/README.md`.
-
 ```
   lib/lagunbus-node/c/lagunbus/     ← the library, an ESP-IDF component
             │
