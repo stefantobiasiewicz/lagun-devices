@@ -27,7 +27,7 @@ config LAGUN_RGB8_LED_COUNT
     range 1 64
     help
         All of them show the same colour: the chain is ONE endpoint for now
-        (zadania/devices/DEVICE-03.md).
+        (zadania/zrobione/DEVICE-03.md).
 
 config LAGUN_RGB8_MAX_COMPONENT
     int "Brightest a channel may go (of 255)"
@@ -36,7 +36,7 @@ config LAGUN_RGB8_MAX_COMPONENT
     help
         A cap on the current: the whole picture is scaled so that full intent on a
         channel lights it at this value, not at 255 — the colour does not change, only
-        how bright full is (zadania/devices/DEVICE-03.md, H1). At 80, eight LEDs at full
+        how bright full is (zadania/zrobione/DEVICE-03.md, H1). At 80, eight LEDs at full
         white draw about 8 x 60 mA x 80/255 = 150 mA from the 5 V pin.
 
 config LAGUN_SERVICE_GPIO

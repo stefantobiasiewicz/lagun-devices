@@ -99,7 +99,7 @@ devices/
 │   ├── out8/                   osiem wyjść na MCP23017 (zadania/zrobione/FEAT-09.md)
 │   ├── env/                    czujnik: SHT40 + VEML7700 (zadania/zrobione/DEVICE-01.md)
 │   ├── epd/                    wyświetlacz: e-papier, dwa pola Display (zadania/zrobione/DEVICE-04.md)
-│   └── rgb8/                   osiem WS2812 jako jedno światło kolorowe (zadania/devices/DEVICE-03.md)
+│   └── rgb8/                   osiem WS2812 jako jedno światło kolorowe (zadania/zrobione/DEVICE-03.md)
 ├── tools/                      flash.sh, monitor.sh
 └── .devcontainer/              ESP-IDF v5.3.1 w kontenerze
 ```

@@ -1,6 +1,6 @@
 /* rgb8 — ESP32-C3 Super Mini + CAN transceiver + eight WS2812 in a line, ONE light.
  *
- * `Output` with `LEVEL | COLOR_RGB` (zadania/devices/DEVICE-03.md): levels, colour,
+ * `Output` with `LEVEL | COLOR_RGB` (zadania/zrobione/DEVICE-03.md): levels, colour,
  * transitions, `LastLevel`, `PowerOnBehaviour` and storing all of it live in the library
  * (lib/lagunbus-node, `lagunbus/types/output.h`) and are tested on a computer against
  * `vectors/scenarios/output_level.json`, `output_color.json` and
@@ -27,7 +27,7 @@ static const char *TAG = "rgb8";
 #define EP_LIGHT 4
 #define LEDS     CONFIG_LAGUN_RGB8_LED_COUNT
 /** The eye's response is roughly a power of the light, so a linear level would make half
- * the knob nearly full light (zadania/devices/DEVICE-03.md, N3). */
+ * the knob nearly full light (zadania/zrobione/DEVICE-03.md, N3). */
 #define GAMMA    2.2f
 
 static lb_attr_t attributes[] = {

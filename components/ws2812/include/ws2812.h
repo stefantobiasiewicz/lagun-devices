@@ -8,7 +8,7 @@
  * a "0" 0.3 µs high and 0.9 µs low, a "1" 0.9 µs high and 0.3 µs low, at a 10 MHz tick.
  * Our own small component and not `espressif/led_strip` from the component registry: the
  * container would have to fetch it from the network at build time, and the timing is the
- * whole of what it would add (zadania/devices/DEVICE-03.md, H2).
+ * whole of what it would add (zadania/zrobione/DEVICE-03.md, H2).
  *
  * The latch ("reset") is the line held low for more than 50 µs — 280 µs on newer WS2812B.
  * `ws2812_show` waits for the frame to leave and then holds the line low for 300 µs, so

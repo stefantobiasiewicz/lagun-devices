@@ -2,7 +2,7 @@
 
 ESP32-C3 Super Mini + SN65HVD230 CAN transceiver + eight WS2812(B) in a line. `DeviceType`
 0x0022, endpoint 4: `Output` with `LEVEL | COLOR_RGB`, `Purpose = LIGHT` — all eight LEDs
-show the same colour, one endpoint (`zadania/devices/DEVICE-03.md`; one endpoint per LED
+show the same colour, one endpoint (`zadania/zrobione/DEVICE-03.md`; one endpoint per LED
 or per segment is for later). Pins and limits are the defaults of `idf.py menuconfig` →
 *LagunBus — rgb8*; power and the general rules are in [`../../README.md`](../../README.md)
 § Sprzęt.
@@ -82,7 +82,9 @@ BOOT = service button, on the board ──  GPIO9 ●┤           ├○ GPIO3
 - **Dark at start.** The application sends black before anything else: a WS2812 can come
   up showing anything, and until `PowerOnBehaviour` decides, the light is off.
 - **The lowest levels.** 8 bits a channel and the curve leave little at the bottom; a
-  channel meant to shine is never sent 0, so `MinLevel` (10 ‰) still lights.
+  channel meant to shine is never sent 0, so `MinLevel` (10 ‰) still lights. With the cap
+  at 80 the first ~15 % of the knob all land on 1 — dithering across the eight LEDs is
+  `zadania/devices/DEVICE-05.md`.
 - **Driving it.** From the hub: `t` `o` `f` in the view, `c` for `SetLevel` / `SetColor`
   with arguments, or the knob `dial` bound to `SetLevel(level: $value)`. A component is
   0–254 — 0xFF on the bus is "absent", and `SetColor` refuses it.
